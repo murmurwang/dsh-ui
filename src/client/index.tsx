@@ -46,8 +46,6 @@ const css = `
 .dshui-side-group-header{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;cursor:pointer;color:var(--dsw-alias-label-secondary,#4e5969);font-size:12px;line-height:16px;min-width:0}
 .dshui-side-group-header:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 .dshui-side-folder{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary,#8a919f)}
-.dshui-side-chev{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary,#8a919f);transform:rotate(0deg);transition:transform .12s}
-.dshui-side-chev-open{transform:rotate(90deg)}
 .dshui-side-group-label{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .dshui-side-group-actions{display:none;flex:none}
 .dshui-side-group-header:hover .dshui-side-group-actions{display:inline-flex}

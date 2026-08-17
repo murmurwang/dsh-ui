@@ -5,7 +5,6 @@ import {
   IconFolderClose16,
   IconFolderOpen16,
   IconPlusOutline16,
-  IconTriangleRightFill14,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type {
   SessionListState,
@@ -87,9 +86,6 @@ function GroupHeader({
     >
       <span className="dshui-side-folder">
         {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
-      </span>
-      <span className="dshui-side-chev">
-        <IconTriangleRightFill14 className={expanded ? "dshui-side-chev-open" : undefined} />
       </span>
       <span className="dshui-side-group-label" title={label}>
         {label}
