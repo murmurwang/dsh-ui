@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.ts"],
+  "sourcesContent": ["/**\n * dsh-ui \u63D2\u4EF6\u7684 Node\uFF08host\uFF09\u534A\u8FB9\u3002\n *\n * \u8FD9\u662F\u4E00\u4E2A\u7EAF UI \u63D2\u4EF6\uFF1A`apply` \u4FDD\u6301\u4E3A\u7A7A\uFF0C\u53EA\u4E3A\u8BA9\u63D2\u4EF6\u51FA\u73B0\u5728 host \u7684\n * cordis \u914D\u7F6E / Loader \u91CC\uFF1B\u6D4F\u89C8\u5668\u534A\u8FB9\u7ECF\u7531 `exports[\"./client\"]` \u53D1\u5E03\uFF0C\n * \u7531 package.json \u91CC\u7684 `dsh.client` \u58F0\u660E\u88AB\u53D1\u73B0\u5E76\u6CE8\u5165\u524D\u7AEF\u3002\n */\nexport function apply(): void {}\n"],
+  "mappings": ";AAOO,SAAS,QAAc;AAAC;",
+  "names": []
+}
