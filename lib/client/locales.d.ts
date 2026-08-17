@@ -20,6 +20,8 @@ export declare const zh: {
     readonly "tabs.notes.short": "记";
     readonly "tabs.files.short": "文";
     readonly "ws.add": "添加工作区";
+    readonly "ws.newSession.aria": "在 {name} 新建会话";
+    readonly "ws.newSession.title": "在此工作区新建会话";
     readonly "ws.ungrouped": "未归组";
     readonly "ws.empty": "还没有工作区，点上方添加";
     readonly "notes.new": "新建笔记";
@@ -67,6 +69,8 @@ export declare const en: {
     readonly "tabs.notes.short": "N";
     readonly "tabs.files.short": "F";
     readonly "ws.add": "Add workspace";
+    readonly "ws.newSession.aria": "New session in {name}";
+    readonly "ws.newSession.title": "New session in this workspace";
     readonly "ws.ungrouped": "Ungrouped";
     readonly "ws.empty": "No workspaces yet — add one above";
     readonly "notes.new": "New note";

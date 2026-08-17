@@ -78,7 +78,7 @@ const clientBuild = {
   platform: "browser",
   jsx: "automatic",
   minify: true,
-  external: ["react", "react/jsx-runtime"],
+  external: ["react", "react/jsx-runtime", "@deepseek-ai/dsh-client-ui-primitives"],
   plugins: [clientWrap],
 };
 

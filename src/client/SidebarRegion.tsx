@@ -1,6 +1,12 @@
 import * as React from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import type { SessionId } from "@deepseek-ai/dsh-api-remotes/client";
+import {
+  IconFolderClose16,
+  IconFolderOpen16,
+  IconPlusOutline16,
+  IconTriangleRightFill14,
+} from "@deepseek-ai/dsh-client-ui-primitives";
 import type {
   SessionListState,
   WorkspaceListState,
@@ -22,13 +28,15 @@ export interface SidebarRegionProps {
   /** inject 注入的业务面。 */
   notes: NotesController;
   openSession: (sessionId: string) => void;
-  openWorkspace: (workspaceId: string) => void;
+  /** 在指定工作区新建（或复用空白）会话并打开。 */
+  newSessionIn: (workspaceId: string) => void;
   addWorkspace: () => void;
 }
 
 type Tab = "workspaces" | "notes" | "files";
 
 const TAB_KEY = "dsh-ui.sidebar-tab";
+const COLLAPSED_KEY = "dsh-ui.ws-collapsed";
 
 function readTab(): Tab {
   try {
@@ -39,16 +47,87 @@ function readTab(): Tab {
   }
 }
 
+function readCollapsed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    return new Set(raw === null ? [] : (JSON.parse(raw) as string[]));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistCollapsed(set: Set<string>): void {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...set]));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 分组行：文件夹图标 + 名称 + 悬停动作（新建会话）。点击标题 = 折叠/展开。 */
+function GroupHeader({
+  label,
+  expanded,
+  onToggle,
+  onCreate,
+  t,
+}: {
+  label: string;
+  expanded: boolean;
+  onToggle: () => void;
+  onCreate?: () => void;
+  t: TranslateNS<typeof NS>;
+}) {
+  return (
+    <div
+      className="dshui-side-group-header"
+      role="treeitem"
+      aria-expanded={expanded}
+      onClick={onToggle}
+    >
+      <span className="dshui-side-folder">
+        {expanded ? <IconFolderOpen16 /> : <IconFolderClose16 />}
+      </span>
+      <span className="dshui-side-chev">
+        <IconTriangleRightFill14 className={expanded ? "dshui-side-chev-open" : undefined} />
+      </span>
+      <span className="dshui-side-group-label" title={label}>
+        {label}
+      </span>
+      {onCreate !== undefined ? (
+        <span className="dshui-side-group-actions">
+          <button
+            type="button"
+            className="dshui-side-icon-btn"
+            aria-label={t("ws.newSession.aria", { name: label })}
+            title={t("ws.newSession.title")}
+            onClick={(ev) => {
+              ev.stopPropagation();
+              onCreate();
+            }}
+          >
+            <IconPlusOutline16 />
+          </button>
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function WorkspacesTab({
   t,
   useWorkspaces,
   useSessions,
   openSession,
-  openWorkspace,
+  newSessionIn,
   addWorkspace,
-}: Pick<SidebarRegionProps, "t" | "useWorkspaces" | "useSessions" | "openSession" | "openWorkspace" | "addWorkspace">) {
+}: Pick<
+  SidebarRegionProps,
+  "t" | "useWorkspaces" | "useSessions" | "openSession" | "newSessionIn" | "addWorkspace"
+>) {
   const ws = useWorkspaces((s) => s);
   const sessions = useSessions((s) => s);
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(readCollapsed);
   const archived = React.useMemo(() => new Set(ws.archivedSessionIds), [ws.archivedSessionIds]);
   const byId = sessions.byId;
 
@@ -64,7 +143,6 @@ function WorkspacesTab({
     [byId, archived, sessions.current],
   );
 
-  // 未归组会话：不属于任何工作区。
   const accounted = React.useMemo(() => {
     const set = new Set<string>();
     for (const w of ws.items) for (const id of w.sessionIds) set.add(id);
@@ -73,63 +151,77 @@ function WorkspacesTab({
 
   const ungrouped = sessions.ids.filter((id) => !accounted.has(id) && visibleOf(id));
 
+  const toggle = (key: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      persistCollapsed(next);
+      return next;
+    });
+  };
+
+  const renderSessionRow = (id: SessionId) => {
+    const s = byId[id];
+    if (s === undefined) return null;
+    return (
+      <button
+        key={id}
+        type="button"
+        className={
+          sessions.current === id ? "dshui-side-row dshui-side-row-current" : "dshui-side-row"
+        }
+        onClick={() => openSession(id)}
+      >
+        <span className="dshui-side-row-title">{s.displayTitle}</span>
+        {s.running ? <span className="dshui-side-dot dshui-side-dot-running" /> : null}
+        {s.pendingInteraction !== undefined ? (
+          <span className="dshui-side-dot dshui-side-dot-ask" />
+        ) : null}
+        {s.completed === true && !s.running ? (
+          <span className="dshui-side-dot dshui-side-dot-done" />
+        ) : null}
+      </button>
+    );
+  };
+
   return (
     <div className="dshui-side-pane">
       <div className="dshui-side-add" role="button" tabIndex={0} onClick={addWorkspace}>
         <span className="dshui-side-add-plus">＋</span>
         <span>{t("ws.add")}</span>
       </div>
-      {ws.items.map((w) => (
-        <div key={w.workspaceId} className="dshui-side-group">
-          <button
-            type="button"
-            className="dshui-side-group-title"
-            title={w.path}
-            onClick={() => openWorkspace(w.workspaceId)}
-          >
-            {w.title}
-          </button>
-          {w.sessionIds.filter(visibleOf).map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={
-                sessions.current === id
-                  ? "dshui-side-row dshui-side-row-current"
-                  : "dshui-side-row"
-              }
-              onClick={() => openSession(id)}
-            >
-              <span className="dshui-side-row-title">{byId[id]?.displayTitle ?? id}</span>
-              {byId[id]?.running ? <span className="dshui-side-dot dshui-side-dot-running" /> : null}
-              {byId[id]?.pendingInteraction !== undefined ? (
-                <span className="dshui-side-dot dshui-side-dot-ask" />
-              ) : null}
-              {byId[id]?.completed === true && !byId[id]?.running ? (
-                <span className="dshui-side-dot dshui-side-dot-done" />
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ))}
+      {ws.items.map((w) => {
+        const key = `ws:${w.workspaceId}`;
+        const expanded = !collapsed.has(key);
+        return (
+          <div key={w.workspaceId} className="dshui-side-group">
+            <GroupHeader
+              label={w.title}
+              expanded={expanded}
+              onToggle={() => toggle(key)}
+              onCreate={() => newSessionIn(w.workspaceId)}
+              t={t}
+            />
+            {expanded ? (
+              <div className="dshui-side-group-rows">
+                {w.sessionIds.filter(visibleOf).map(renderSessionRow)}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
       {ungrouped.length > 0 ? (
         <div className="dshui-side-group">
-          <div className="dshui-side-group-title dshui-side-group-title-plain">{t("ws.ungrouped")}</div>
-          {ungrouped.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={
-                sessions.current === id
-                  ? "dshui-side-row dshui-side-row-current"
-                  : "dshui-side-row"
-              }
-              onClick={() => openSession(id)}
-            >
-              <span className="dshui-side-row-title">{byId[id]?.displayTitle ?? id}</span>
-              {byId[id]?.running ? <span className="dshui-side-dot dshui-side-dot-running" /> : null}
-            </button>
-          ))}
+          <GroupHeader
+            label={t("ws.ungrouped")}
+            expanded={!collapsed.has("ws:ungrouped")}
+            onToggle={() => toggle("ws:ungrouped")}
+            t={t}
+          />
+          {!collapsed.has("ws:ungrouped") ? (
+            <div className="dshui-side-group-rows">{ungrouped.map(renderSessionRow)}</div>
+          ) : null}
         </div>
       ) : null}
       {ws.items.length === 0 && ungrouped.length === 0 ? (
@@ -139,10 +231,7 @@ function WorkspacesTab({
   );
 }
 
-function NotesTab({
-  t,
-  notes,
-}: Pick<SidebarRegionProps, "t" | "notes">) {
+function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
   const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot);
   const onCreate = () => {
     void notes.create("").then((note) => {
@@ -163,16 +252,12 @@ function NotesTab({
           key={item.id}
           type="button"
           className={
-            state.openId === item.id
-              ? "dshui-side-row dshui-side-row-current"
-              : "dshui-side-row"
+            state.openId === item.id ? "dshui-side-row dshui-side-row-current" : "dshui-side-row"
           }
           onClick={() => void notes.open(item.id)}
         >
           <span className="dshui-side-row-title">{item.title}</span>
-          {item.clipCount > 0 ? (
-            <span className="dshui-side-meta">{item.clipCount}</span>
-          ) : null}
+          {item.clipCount > 0 ? <span className="dshui-side-meta">{item.clipCount}</span> : null}
         </button>
       ))}
     </div>

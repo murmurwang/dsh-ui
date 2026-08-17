@@ -16,7 +16,8 @@ export interface SidebarRegionProps {
     /** inject 注入的业务面。 */
     notes: NotesController;
     openSession: (sessionId: string) => void;
-    openWorkspace: (workspaceId: string) => void;
+    /** 在指定工作区新建（或复用空白）会话并打开。 */
+    newSessionIn: (workspaceId: string) => void;
     addWorkspace: () => void;
 }
 /** 侧栏工作区座位的新占有者：工作区 / 笔记 / 文件 三分栏。 */

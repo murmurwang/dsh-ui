@@ -35,7 +35,7 @@ const css = `
 .dshui-clip-new{text-align:left;color:var(--dsw-alias-label-secondary,#4e5969)}
 /* 侧栏分栏 */
 .dshui-side{display:flex;flex-direction:column;gap:6px;min-height:0}
-.dshui-side-tabs{display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--dsw-alias-bg-l2,#f2f3f5)}
+.dshui-side-tabs{display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,#f2f3f5)}
 .dshui-side-tab{flex:1;border:none;background:transparent;color:var(--dsw-alias-label-secondary,#4e5969);cursor:pointer;border-radius:6px;padding:4px 0;font-size:12px;line-height:16px}
 .dshui-side-tab-active{background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1f2329);box-shadow:0 1px 2px rgba(15,23,42,.08)}
 .dshui-side-pane{display:flex;flex-direction:column;gap:2px;overflow-y:auto;min-height:0}
@@ -43,10 +43,17 @@ const css = `
 .dshui-side-add:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 .dshui-side-add-plus{font-size:14px;line-height:16px;color:var(--dsw-alias-label-tertiary,#8a919f)}
 .dshui-side-group{display:flex;flex-direction:column;gap:1px;margin-top:4px}
-.dshui-side-group-title{width:100%;text-align:left;border:none;background:transparent;color:var(--dsw-alias-label-caption,#8a919f);cursor:pointer;font-size:11px;line-height:16px;padding:3px 8px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
-.dshui-side-group-title:hover{color:var(--dsw-alias-label-primary,#1f2329)}
-.dshui-side-group-title-plain{cursor:default}
-.dshui-side-group-title-plain:hover{color:var(--dsw-alias-label-caption,#8a919f)}
+.dshui-side-group-header{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;cursor:pointer;color:var(--dsw-alias-label-secondary,#4e5969);font-size:12px;line-height:16px;min-width:0}
+.dshui-side-group-header:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
+.dshui-side-folder{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary,#8a919f)}
+.dshui-side-chev{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary,#8a919f);transform:rotate(0deg);transition:transform .12s}
+.dshui-side-chev-open{transform:rotate(90deg)}
+.dshui-side-group-label{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.dshui-side-group-actions{display:none;flex:none}
+.dshui-side-group-header:hover .dshui-side-group-actions{display:inline-flex}
+.dshui-side-icon-btn{display:inline-flex;border:none;background:transparent;color:var(--dsw-alias-label-tertiary,#8a919f);cursor:pointer;padding:1px;border-radius:4px}
+.dshui-side-icon-btn:hover{color:var(--dsw-alias-label-primary,#1f2329);background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
+.dshui-side-group-rows{display:flex;flex-direction:column;gap:1px;padding-left:14px}
 .dshui-side-row{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border:none;background:transparent;color:var(--dsw-alias-label-primary,#1f2329);cursor:pointer;border-radius:6px;padding:5px 8px;font-size:12px;line-height:16px}
 .dshui-side-row:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 .dshui-side-row-current{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3);color:var(--dsw-static-deepseek-500,#4d6bfe)}
@@ -54,7 +61,7 @@ const css = `
 .dshui-side-meta{color:var(--dsw-alias-label-caption,#8a919f);font-size:11px}
 .dshui-side-dot{width:6px;height:6px;border-radius:3px;flex:none}
 .dshui-side-dot-running{background:var(--dsw-static-deepseek-500,#4d6bfe);animation:dshui-pulse 1.6s ease-in-out infinite}
-.dshui-side-dot-ask{background:var(--dsw-alias-state-warning-primary,#f7ba1e)}
+.dshui-side-dot-ask{background:var(--dsw-alias-state-warn-primary,#f7ba1e)}
 .dshui-side-dot-done{background:var(--dsw-alias-state-success-primary,#00b42a)}
 @keyframes dshui-pulse{0%,100%{opacity:.35}50%{opacity:1}}
 .dshui-side-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#8a919f);font-size:12px;line-height:18px}
@@ -67,7 +74,7 @@ const css = `
 .dshui-note-error{padding:6px 16px;font-size:12px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d03050);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#d03050) 8%,transparent)}
 .dshui-note-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px;padding:16px;max-width:860px;width:100%;margin:0 auto}
 .dshui-note-clips{display:flex;flex-direction:column;gap:8px}
-.dshui-note-clip{border:1px solid var(--dsw-alias-border-l1,#e5e6eb);border-radius:10px;padding:10px 12px;background:var(--dsw-alias-bg-l2,#f7f8fa)}
+.dshui-note-clip{border:1px solid var(--dsw-alias-border-l1,#e5e6eb);border-radius:10px;padding:10px 12px;background:var(--dsw-alias-bg-layer-2,#f7f8fa)}
 .dshui-note-clip-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
 .dshui-note-clip-src{font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption,#8a919f)}
 .dshui-note-clip-actions{display:flex;gap:6px}
@@ -86,7 +93,7 @@ const css = `
 .dshui-markdown pre code{background:transparent;padding:0}
 .dshui-markdown table{border-collapse:collapse;margin:8px 0;width:100%}
 .dshui-markdown th,.dshui-markdown td{border:1px solid var(--dsw-alias-border-l1,#e5e6eb);padding:5px 10px;text-align:left;font-size:13px}
-.dshui-markdown th{background:var(--dsw-alias-bg-l2,#f7f8fa)}
+.dshui-markdown th{background:var(--dsw-alias-bg-layer-2,#f7f8fa)}
 .dshui-markdown a{color:var(--dsw-static-deepseek-500,#4d6bfe)}
 .dshui-note-foot{position:sticky;bottom:0;padding:8px 16px;border-top:1px solid var(--dsw-alias-border-l1,#e5e6eb);background:var(--dsw-alias-bg-base,#fff)}
 .dshui-note-foot-bar{display:flex;align-items:center;gap:10px}
@@ -97,7 +104,7 @@ const css = `
 .dshui-note-atitem{border:none;background:transparent;text-align:left;color:var(--dsw-alias-label-primary,#1f2329);cursor:pointer;border-radius:7px;padding:6px 10px;font-size:12px;line-height:18px}
 .dshui-note-atitem:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 /* toast */
-.dshui-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:1200;background:var(--dsw-alias-bg-inverse,#1f2329);color:var(--dsw-alias-bg-base,#fff);border-radius:999px;padding:7px 16px;font-size:12px;line-height:18px;box-shadow:var(--dsw-shadow-lv2,0 6px 24px rgba(15,23,42,.14))}
+.dshui-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:1200;background:var(--dsw-alias-bg-overlay,#fff);color:var(--dsw-alias-label-primary,#1f2329);border:1px solid var(--dsw-alias-border-l2,#e2e4e9);border-radius:999px;padding:7px 16px;font-size:12px;line-height:18px;box-shadow:var(--dsw-shadow-lv2,0 6px 24px rgba(15,23,42,.14))}
 `;
 
 /** 注入样式；带 data-plugin 归属，配合 dsh-client-hmr 的样式清理。 */
@@ -293,11 +300,14 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register(
       {
         name: "sidebar.workspaces",
+        // 官方内置工作区面板默认注册在 priority 0；single 槽位同优先级会抛错。
+        // 用更低的 -1 注册以遮蔽内置面板（槽位规则：数值最低的注册负责渲染）。
+        priority: -1,
         locale: NS,
         inject: () => ({
           notes,
           openSession,
-          openWorkspace: (workspaceId: string) => {
+          newSessionIn: (workspaceId: string) => {
             void workspaces
               .connectWorkspace(workspaceId as WorkspaceId)
               .then((sessionId) => {

@@ -181,7 +181,7 @@ function makeCtx() {
 function loadAndApply() {
   const { factory } = loadBundle();
   const exportsOf = factory((spec) => {
-    if (spec === "react" || spec === "react/jsx-runtime") return {};
+    if (spec === "react" || spec === "react/jsx-runtime" || spec === "@deepseek-ai/dsh-client-ui-primitives") return {};
     throw new Error(`unexpected require: ${spec}`);
   });
   const { ctx, calls } = makeCtx();
