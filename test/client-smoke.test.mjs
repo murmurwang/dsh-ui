@@ -148,6 +148,7 @@ function makeCtx() {
   };
 
   const ctx = {
+    get: (name) => (name === "remote.notes" ? notesFace : undefined),
     effect: (fn) => {
       const dispose = fn();
       return typeof dispose === "function" ? dispose : () => {};

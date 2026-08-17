@@ -240,6 +240,9 @@ export function apply(ctx: ClientContext): void {
   const notes = new NotesController();
 
   // 挂载 notes 远程贡献（Typert gateway → host NotesService）。
+  // 命名空间服务由 gateway 以动态 fiber 提供为 "remote.notes"；
+  // 通过 ctx.get（隔离层读取，无 inject 要求）取得 face —— 与官方
+  // “挂载者与消费者分离”的模式对齐（本插件两者一体，不能自注入）。
   ctx.effect(() => {
     let disposed = false;
     let unmount: (() => void) | null = null;
@@ -250,9 +253,10 @@ export function apply(ctx: ClientContext): void {
           return;
         }
         unmount = dispose;
-        const face = (
-          ctx.remote as unknown as { notes: NotesRemoteFace }
-        ).notes;
+        const face = ctx.get("remote.notes") as NotesRemoteFace | undefined;
+        if (face === undefined) {
+          throw new Error("remote.notes namespace was not provided after mount");
+        }
         await notes.attach(face);
       })
       .catch((err: unknown) => {

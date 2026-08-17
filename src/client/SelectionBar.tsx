@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
-import { watchSelection, type SelectionSnapshot } from "./selection";
+import { watchSelection, isInsideChatArea, type SelectionSnapshot } from "./selection";
 import { NS } from "./locales";
 import type { NotesController } from "./notes";
 
