@@ -7,15 +7,15 @@ import { dirname, join } from "node:path";
 /**
  * 客户端 bundle 冒烟测试：在 Node 里用假 DOM + 假 ModuleLoader 装载
  * lib/client.js，用一个最小 mock ctx 执行 apply()，验证：
- * - 插件注册进 shell.overlay，且带正确 id / locale；
- * - “追问所选部分”把引用块预填进当前会话输入框；
- * - “在新分支中追问”调用 sessions.fork → open 子分支 → 预填引用块。
+ * - 侧栏分栏注册（sidebar.workspaces 被接管）；
+ * - shell.overlay 的三个条目（划选浮窗 / 笔记编辑器 / toast）；
+ * - notes 远程经 ctx.remote.$mount 挂载并拉到列表；
+ * - 划选追问（feature 1）与剪藏、@dsh 动作的调用链。
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bundlePath = join(here, "..", "lib", "client.js");
 
-/** 加载 bundle，返回 { id, factory }。 */
 function loadBundle() {
   let entry = null;
   const windowStub = {
@@ -47,7 +47,6 @@ function loadBundle() {
     return 0;
   };
   const code = readFileSync(bundlePath, "utf8");
-  // 包进一个函数作用域执行，避免污染全局。
   new Function("window", "document", "requestAnimationFrame", code)(
     windowStub,
     globalThis.document,
@@ -58,20 +57,43 @@ function loadBundle() {
   return entry;
 }
 
-/** 构造最小 mock ctx。 */
+const sleep = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function makeNote(overrides = {}) {
+  return {
+    id: "n1",
+    title: "测试笔记",
+    body: "",
+    clips: [],
+    version: "1",
+    createdAt: 1,
+    updatedAt: 1,
+    ...overrides,
+  };
+}
+
 function makeCtx() {
   const calls = {
-    registerDef: null,
+    registrations: [], // {name, id, inject()}
     fork: null,
     opened: [],
-    drafts: new Map(), // sessionId -> 最终草稿
-    dictionaries: null,
+    drafts: new Map(),
+    startSession: 0,
+    mounted: null,
+    remoteUpdates: [],
+    connected: [],
   };
 
-  const textarea = { value: "", focused: false, focus() { this.focused = true; }, setSelectionRange() {} };
+  const textarea = {
+    value: "",
+    focused: false,
+    focus() {
+      this.focused = true;
+    },
+    setSelectionRange() {},
+  };
   document.querySelector = () => textarea;
 
-  // 会话输入面。
   const inputFor = (actx) => ({
     state: { getSnapshot: () => ({ draft: calls.drafts.get(actx.sessionId) ?? "" }) },
     setDraft: (text) => {
@@ -80,7 +102,7 @@ function makeCtx() {
   });
 
   const sessions = {
-    list: { getSnapshot: () => ({ current: "s1" }) },
+    list: { getSnapshot: () => ({ current: "s1", byId: { s1: { displayTitle: "会话一" } } }) },
     scope: (id) => ({ sessionId: id }),
     binding: (id) => ({ sessionId: id, ctx: { sessionId: id } }),
     fork: async (opts) => {
@@ -90,6 +112,39 @@ function makeCtx() {
     open: (id) => {
       calls.opened.push(id);
     },
+  };
+
+  const workspaces = {
+    startSession: () => {
+      calls.startSession += 1;
+    },
+    connectWorkspace: async (id) => {
+      calls.connected.push(id);
+      return "s1";
+    },
+    pickDirectory: async () => null,
+    create: async () => ({}),
+  };
+
+  const notesFace = {
+    list: async () => ({ ok: true, value: { items: [makeNote()] } }),
+    get: async ({ id }) =>
+      id === "n1" ? { ok: true, value: { note: makeNote() } } : { ok: false, error: { code: "not-found", id } },
+    create: async ({ title }) => ({ ok: true, value: { note: makeNote({ title: title || "未命名笔记" }) } }),
+    update: async (req) => {
+      calls.remoteUpdates.push(req);
+      return { ok: true, value: { note: makeNote({ version: "2" }) } };
+    },
+    delete: async () => ({ ok: true, value: { ok: true } }),
+  };
+
+  const remote = {
+    $mount: async (contribution) => {
+      calls.mounted = contribution;
+      return async () => {};
+    },
+    notes: notesFace,
+    $on: () => () => {},
   };
 
   const ctx = {
@@ -105,74 +160,106 @@ function makeCtx() {
     },
     slots: {
       register: (def, component) => {
-        calls.registerDef = { def, component };
+        calls.registrations.push({ name: def.name, id: def.id ?? null, inject: def.inject ?? (() => ({})), component });
         return () => {};
       },
-      inject: (name, callback) => callback(),
+      inject: (name, callback) => {
+        const disposers = callback();
+        return () => {
+          for (const d of [disposers].flat()) if (typeof d === "function") d();
+        };
+      },
     },
     sessions,
+    workspaces,
     conversation: { input: { for: inputFor } },
+    remote,
   };
   return { ctx, calls, textarea };
 }
 
-test("apply 注册 shell.overlay 条目", () => {
+function loadAndApply() {
   const { factory } = loadBundle();
   const exportsOf = factory((spec) => {
     if (spec === "react" || spec === "react/jsx-runtime") return {};
     throw new Error(`unexpected require: ${spec}`);
   });
-  assert.equal(typeof exportsOf.apply, "function");
-  assert.deepEqual(exportsOf.inject, ["slots", "sessions", "locale", "conversation"]);
-
   const { ctx, calls } = makeCtx();
   exportsOf.apply(ctx);
-  assert.ok(calls.registerDef, "应注册 slot 条目");
-  assert.equal(calls.registerDef.def.name, "shell.overlay");
-  assert.equal(calls.registerDef.def.id, "dsh-ui.selection-bar");
-  assert.equal(calls.registerDef.def.locale, "dsh-ui.selection");
-  assert.ok(calls.dictionaries, "应注册词典");
-  assert.equal(calls.dictionaries.ns, "dsh-ui.selection");
+  return { ctx, calls };
+}
+
+const byName = (calls, name) => calls.registrations.filter((r) => r.name === name);
+
+test("apply 注册侧栏分栏与三个 overlay 条目", () => {
+  const { calls } = loadAndApply();
+  assert.equal(byName(calls, "sidebar.workspaces").length, 1, "应接管 sidebar.workspaces");
+  const overlays = byName(calls, "shell.overlay");
+  assert.equal(overlays.length, 3);
+  assert.deepEqual(
+    overlays.map((r) => r.id).sort(),
+    ["dsh-ui.note-editor", "dsh-ui.selection-bar", "dsh-ui.toast"],
+  );
 });
 
-test("追问所选部分：引用块预填进当前会话输入框", () => {
-  const { factory } = loadBundle();
-  const exportsOf = factory(() => ({}));
-  const { ctx, calls, textarea } = makeCtx();
-  exportsOf.apply(ctx);
-  const { askHere, askInBranch, hasSession } = calls.registerDef.def.inject();
-  assert.equal(hasSession(), true);
-
-  askHere("第一行\n第二行");
-  assert.equal(calls.drafts.get("s1"), "> 第一行\n> 第二行\n\n");
-  assert.equal(textarea.focused, true);
-
-  // 既有草稿不覆盖：追加到草稿之后。
-  calls.drafts.set("s1", "已有内容");
-  askHere("补充");
-  assert.equal(calls.drafts.get("s1"), "已有内容\n\n> 补充\n\n");
-  assert.equal(typeof askInBranch, "function");
+test("notes 远程经 $mount 挂载并拉到列表", async () => {
+  const { calls } = loadAndApply();
+  await sleep(10);
+  assert.ok(calls.mounted, "$mount 应被调用");
+  assert.equal(calls.mounted.package, "dsh-ui");
+  assert.equal(calls.mounted.descriptors.length, 5);
+  const sidebar = byName(calls, "sidebar.workspaces")[0].inject();
+  assert.ok(sidebar.notes, "侧栏注入应携带 notes 控制器");
+  await sleep(10);
+  const snapshot = sidebar.notes.getSnapshot();
+  assert.equal(snapshot.phase, "ready");
+  assert.equal(snapshot.items.length, 1);
 });
 
-test("在新分支中追问：fork → open 子分支 → 预填", async () => {
-  const { factory } = loadBundle();
-  const exportsOf = factory(() => ({}));
-  const { ctx, calls } = makeCtx();
-  exportsOf.apply(ctx);
-  const { askInBranch } = calls.registerDef.def.inject();
-
-  await askInBranch("选中的文字");
+test("feature 1：追问所选部分与新分支追问仍工作", async () => {
+  const { calls } = loadAndApply();
+  const bar = byName(calls, "shell.overlay").find((r) => r.id === "dsh-ui.selection-bar").inject();
+  assert.equal(bar.hasSession(), true);
+  bar.askHere("引用我");
+  assert.equal(calls.drafts.get("s1"), "> 引用我\n\n");
+  await bar.askInBranch("分支我");
   assert.deepEqual(calls.fork, { sessionId: "s1", increaseTitle: true });
   assert.deepEqual(calls.opened, ["s2"]);
-  assert.equal(calls.drafts.get("s2"), "> 选中的文字\n\n");
+  assert.equal(calls.drafts.get("s2"), "> 分支我\n\n");
+});
+
+test("feature 2：划线剪藏走 notes.update(addClip)", async () => {
+  const { calls } = loadAndApply();
+  await sleep(10);
+  const bar = byName(calls, "shell.overlay").find((r) => r.id === "dsh-ui.selection-bar").inject();
+  const ok = await bar.saveClip("n1", "剪藏文本");
+  assert.equal(ok, true);
+  const update = calls.remoteUpdates.find((u) => u.addClip !== undefined);
+  assert.ok(update, "应发出带 addClip 的 update");
+  assert.equal(update.addClip.text, "剪藏文本");
+  assert.equal(update.addClip.sessionId, "s1");
+  assert.equal(update.addClip.sessionTitle, "会话一");
+});
+
+test("feature 2：@dsh 动作（当前会话 / 新建会话）预填笔记内容", async () => {
+  const { calls } = loadAndApply();
+  await sleep(10);
+  const editor = byName(calls, "shell.overlay").find((r) => r.id === "dsh-ui.note-editor").inject();
+  editor.askInCurrent("笔记上下文内容");
+  assert.equal(calls.drafts.get("s1"), "笔记上下文内容\n\n");
+  // 预填是追加语义：后续动作接在既有草稿之后。
+  editor.askInNewSession("新会话上下文");
+  assert.equal(calls.startSession, 1);
+  assert.equal(calls.drafts.get("s1"), "笔记上下文内容\n\n新会话上下文\n\n");
+  editor.workInNote("工作模板");
+  assert.equal(calls.startSession, 2);
+  assert.equal(calls.drafts.get("s1"), "笔记上下文内容\n\n新会话上下文\n\n工作模板\n\n");
 });
 
 test("无当前会话时 askHere 抛错", () => {
-  const { factory } = loadBundle();
-  const exportsOf = factory(() => ({}));
-  const { ctx, calls } = makeCtx();
-  ctx.sessions.list.getSnapshot = () => ({ current: undefined });
-  exportsOf.apply(ctx);
-  const { askHere } = calls.registerDef.def.inject();
-  assert.throws(() => askHere("x"), /no current session/);
+  const { calls, ctx } = loadAndApply();
+  ctx.sessions.list.getSnapshot = () => ({ current: undefined, byId: {} });
+  const bar = byName(calls, "shell.overlay").find((r) => r.id === "dsh-ui.selection-bar").inject();
+  assert.equal(bar.hasSession(), false);
+  assert.throws(() => bar.askHere("x"), /no current session/);
 });

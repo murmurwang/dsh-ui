@@ -16,9 +16,12 @@ import { execFileSync } from "node:child_process";
 const BUNDLE_ID = "dsh-ui";
 const watch = process.argv.includes("--watch");
 
-/** 产出 .d.ts（tsconfig emitDeclarationOnly）。 */
+/** 产出 .d.ts（host / client 两个面各自的 tsconfig）。 */
 function emitTypes() {
-  execFileSync("./node_modules/.bin/tsc", ["-p", "tsconfig.json"], {
+  execFileSync("./node_modules/.bin/tsc", ["-p", "tsconfig.host.json"], {
+    stdio: "inherit",
+  });
+  execFileSync("./node_modules/.bin/tsc", ["-p", "tsconfig.client.json"], {
     stdio: "inherit",
   });
 }
@@ -50,8 +53,19 @@ const hostBuild = {
   entryPoints: ["src/index.ts"],
   outfile: "lib/index.js",
   format: "esm",
-  platform: "neutral",
-  external: ["@deepseek-ai/*"],
+  platform: "node",
+  external: ["@deepseek-ai/*", "zod"],
+  sourcemap: true,
+};
+
+/** Typert host 清单：由 dsh-typert-loader 动态导入，必须是 Node ESM。 */
+const typertBuild = {
+  ...shared,
+  entryPoints: ["src/typert.ts"],
+  outfile: "lib/typert.js",
+  format: "esm",
+  platform: "node",
+  external: ["@deepseek-ai/*", "zod"],
   sourcemap: true,
 };
 
@@ -63,6 +77,7 @@ const clientBuild = {
   globalName: "__dshuiClientExports",
   platform: "browser",
   jsx: "automatic",
+  minify: true,
   external: ["react", "react/jsx-runtime"],
   plugins: [clientWrap],
 };
@@ -70,12 +85,17 @@ const clientBuild = {
 if (watch) {
   const ctxs = await Promise.all([
     esbuild.context(hostBuild),
+    esbuild.context(typertBuild),
     esbuild.context(clientBuild),
   ]);
   emitTypes();
   await Promise.all(ctxs.map((ctx) => ctx.watch()));
   console.log("[dsh-ui] watching src/ for changes…");
 } else {
-  await Promise.all([esbuild.build(hostBuild), esbuild.build(clientBuild)]);
+  await Promise.all([
+    esbuild.build(hostBuild),
+    esbuild.build(typertBuild),
+    esbuild.build(clientBuild),
+  ]);
   emitTypes();
 }
