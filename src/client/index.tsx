@@ -259,7 +259,8 @@ export function apply(ctx: ClientContext): void {
       })
       .catch((err: unknown) => {
         console.error("[dsh-ui] notes remote mount failed:", err);
-        notes.notifyToast("笔记服务不可用");
+        const detail = err instanceof Error ? err.message : String(err);
+        notes.notifyToast(`笔记服务不可用：${detail}`);
       });
     return () => {
       disposed = true;
