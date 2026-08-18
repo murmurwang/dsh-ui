@@ -186,6 +186,29 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       return;
     }
     if (ev.key === "Enter") {
+      // 回链内按 Enter：不撕开链接，光标移到链接包裹之后。
+      const selBefore = window.getSelection();
+      const caret = selBefore?.anchorNode ?? null;
+      const inLink =
+        caret !== null &&
+        (caret instanceof Element ? caret : caret.parentElement)?.closest?.(
+          ".dshui-link-wrap, a.dshui-link",
+        ) != null;
+      if (inLink) {
+        ev.preventDefault();
+        const wrap =
+          (caret instanceof Element ? caret : caret.parentElement)?.closest?.(
+            ".dshui-link-wrap",
+          ) ?? null;
+        if (wrap !== null && selBefore !== null) {
+          const range = document.createRange();
+          range.setStartAfter(wrap);
+          range.collapse(true);
+          selBefore.removeAllRanges();
+          selBefore.addRange(range);
+        }
+        return;
+      }
       // 标题类段落末尾按 Enter：新段落不带标题类（Chromium 会复制类）。
       const sel = window.getSelection();
       if (sel === null || sel.rangeCount === 0) return;

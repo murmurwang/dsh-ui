@@ -251,15 +251,26 @@ function inlineToMd(node: Node): string {
       return `\`${textOf(node)}\``;
     case "A": {
       const href = node.getAttribute("href") ?? node.getAttribute("data-href") ?? "";
+      // 分裂后丢失 data-href 的残片：降级为纯文本（避免产出死链）。
+      if (href === "") return textOf(node);
       return `[${textOf(node)}](${href})`;
     }
     case "BUTTON":
       return ""; // 返回按钮不进入 Markdown
     case "SPAN": {
       if (node.classList.contains("dshui-link-wrap")) {
-        const anchor = node.querySelector("a.dshui-link");
-        const href = anchor?.getAttribute("data-href") ?? "";
-        return `[${textOf(anchor ?? node)}](${href})`;
+        // 完整遍历：编辑器可能把包裹撕成多个片段，逐段还原。
+        let out = "";
+        for (const child of Array.from(node.childNodes)) {
+          if (child instanceof Element && child.tagName === "A") {
+            const href =
+              child.getAttribute("href") ?? child.getAttribute("data-href") ?? "";
+            out += href === "" ? textOf(child) : `[${textOf(child)}](${href})`;
+          } else {
+            out += inlineToMd(child);
+          }
+        }
+        return out;
       }
       break;
     }
