@@ -240,34 +240,35 @@ export function SidebarRegion(props: SidebarRegionProps) {
     } catch {
       /* ignore */
     }
-    // 主区联动：切到笔记 → 恢复上次打开的笔记（没有则保持官方页面）；
-    // 切到其它 tab → 关闭编辑器，主区回到官方页面。
+    // 主区联动：tab 切换右边必须跟着切换。
+    // 切到笔记 → 展示一篇笔记（优先上次打开的；它被删除/记录丢失则回退第一篇；
+    // 没有任何笔记时保持官方页面）；切到其它 tab → 关闭编辑器回到官方页面。
     if (next === "notes") {
       const snapshot = props.notes.getSnapshot();
-      const lastId = snapshot.lastOpenNoteId;
-      if (
-        lastId !== null &&
-        snapshot.items.some((item) => item.id === lastId) &&
-        snapshot.openNote === null
-      ) {
-        void props.notes.open(lastId);
+      if (snapshot.openNote === null && snapshot.items.length > 0) {
+        const lastId = snapshot.lastOpenNoteId;
+        const target =
+          lastId !== null && snapshot.items.some((item) => item.id === lastId)
+            ? lastId
+            : snapshot.items[0].id;
+        void props.notes.open(target);
       }
     } else {
       props.notes.close();
     }
   };
 
-  // 初始就是笔记 tab（跨刷新记忆）时同样恢复上次笔记。
+  // 初始就是笔记 tab（跨刷新记忆）时同样保证展示一篇笔记。
   React.useEffect(() => {
     if (tab !== "notes") return;
     const snapshot = props.notes.getSnapshot();
-    const lastId = snapshot.lastOpenNoteId;
-    if (
-      lastId !== null &&
-      snapshot.items.some((item) => item.id === lastId) &&
-      snapshot.openNote === null
-    ) {
-      void props.notes.open(lastId);
+    if (snapshot.openNote === null && snapshot.items.length > 0) {
+      const lastId = snapshot.lastOpenNoteId;
+      const target =
+        lastId !== null && snapshot.items.some((item) => item.id === lastId)
+          ? lastId
+          : snapshot.items[0].id;
+      void props.notes.open(target);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
