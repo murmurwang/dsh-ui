@@ -50,12 +50,34 @@ export function NoteEditor(props: NoteEditorProps) {
   const [body, setBody] = React.useState("");
   const [savedTitle, setSavedTitle] = React.useState("");
   const [savedBody, setSavedBody] = React.useState("");
-  const [mode, setMode] = React.useState<ViewMode>("edit");
+  const [mode, setMode] = React.useState<ViewMode>("preview");
   const [atOpen, setAtOpen] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const open = state.openNote;
   const dirty = title !== savedTitle || body !== savedBody;
+  const [bounds, setBounds] = React.useState<{ left: number; width: number } | null>(null);
+
+  // 笔记页覆盖对话中心列：以 [data-conversation-scroll] 为锚测量左缘与宽度，
+  // 侧栏保持可见可点；侧栏折叠/窗口变化经 ResizeObserver + resize 重测。
+  React.useEffect(() => {
+    if (open === null) return;
+    const measure = () => {
+      const el = document.querySelector("[data-conversation-scroll]");
+      if (el === null) return;
+      const rect = el.getBoundingClientRect();
+      setBounds({ left: rect.left, width: rect.width });
+    };
+    measure();
+    const el = document.querySelector("[data-conversation-scroll]");
+    const observer = el !== null ? new ResizeObserver(measure) : null;
+    if (el !== null && observer !== null) observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [open !== null]);
 
   // 外部（轮询/保存回写）更新时，未修改状态则同步草稿。
   React.useEffect(() => {
@@ -71,6 +93,11 @@ export function NoteEditor(props: NoteEditorProps) {
   React.useEffect(() => {
     notes.setDirty(dirty);
   }, [dirty, notes]);
+
+  // 打开不同笔记时回到渲染（预览）视图。
+  React.useEffect(() => {
+    setMode("preview");
+  }, [open?.id]);
 
   // 编辑态：textarea 随内容自动长高（外层 body 滚动），长笔记可完整滚动。
   const resizeTextarea = React.useCallback(() => {
@@ -123,7 +150,16 @@ export function NoteEditor(props: NoteEditorProps) {
   ];
 
   return (
-    <div className="dshui-note-shell" role="dialog" aria-label={t("note.aria")}>
+    <div
+      className="dshui-note-shell"
+      role="dialog"
+      aria-label={t("note.aria")}
+      style={
+        bounds === null
+          ? { visibility: "hidden" }
+          : { left: bounds.left, width: bounds.width }
+      }
+    >
       <div className="dshui-note-head">
         <button type="button" className="dshui-pop-btn" onClick={() => notes.close()}>
           ✕ {t("note.close")}
