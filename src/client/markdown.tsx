@@ -24,7 +24,7 @@ const INLINE_RE =
 
 const DSHUI_LINK_RE = /^dshui:\/\/session\/(.+)$/;
 
-function renderInline(text: string): string {
+function renderInline(text: string, backLabel: string): string {
   let out = "";
   let last = 0;
   let match: RegExpExecArray | null;
@@ -48,7 +48,7 @@ function renderInline(text: string): string {
         out +=
           `<span class="dshui-link-wrap">` +
           `<a class="dshui-link" data-href="${escapeHtml(href)}">${escapeHtml(label)}</a>` +
-          `<button class="dshui-link-back" type="button" contenteditable="false" data-session="${escapeHtml(session[1])}">↩</button>` +
+          `<button class="dshui-link-back" type="button" contenteditable="false" data-session="${escapeHtml(session[1])}">${escapeHtml(backLabel)}</button>` +
           `</span>`;
       } else {
         out += `<a class="dshui-extlink" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
@@ -60,7 +60,7 @@ function renderInline(text: string): string {
   return out;
 }
 
-function renderTable(lines: string[]): string {
+function renderTable(lines: string[], backLabel: string): string {
   if (lines.length < 2) return "";
   const split = (line: string) =>
     line
@@ -81,13 +81,13 @@ function renderTable(lines: string[]): string {
   const rows = lines.slice(2).map(split);
   let out = "<table><thead><tr>";
   for (let i = 0; i < header.length; i++) {
-    out += `<th${aligns[i]}>${renderInline(header[i])}</th>`;
+    out += `<th${aligns[i]}>${renderInline(header[i], backLabel)}</th>`;
   }
   out += "</tr></thead><tbody>";
   for (const row of rows) {
     out += "<tr>";
     for (let i = 0; i < header.length; i++) {
-      out += `<td${aligns[i]}>${renderInline(row[i] ?? "")}</td>`;
+      out += `<td${aligns[i]}>${renderInline(row[i] ?? "", backLabel)}</td>`;
     }
     out += "</tr>";
   }
@@ -96,7 +96,7 @@ function renderTable(lines: string[]): string {
 }
 
 /** 列表：两级嵌套，返回 HTML 与消费的行数。 */
-function renderList(lines: string[], start: number, ordered: boolean): { html: string; next: number } {
+function renderList(lines: string[], start: number, ordered: boolean, backLabel: string): { html: string; next: number } {
   let html = "";
   let i = start;
   while (i < lines.length) {
@@ -119,16 +119,22 @@ function renderList(lines: string[], start: number, ordered: boolean): { html: s
     let sub = "";
     if (/^\s*([-*+]|\d+[.)])\s+/.test(subLines[0] ?? "")) {
       const subOrdered = /^\s*\d+[.)]/.test(subLines[0]);
-      sub = renderList(subLines, 0, subOrdered).html;
+      sub = renderList(subLines, 0, subOrdered, backLabel).html;
     }
-    html += `<li>${renderInline(match[2])}${sub}</li>`;
+    html += `<li>${renderInline(match[2], backLabel)}${sub}</li>`;
     i = j;
   }
   return { html: ordered ? `<ol>${html}</ol>` : `<ul>${html}</ul>`, next: i };
 }
 
+export interface MarkdownHtmlOptions {
+  /** 回链 hover 按钮文案。 */
+  backLabel?: string;
+}
+
 /** Markdown → 可编辑 HTML 字符串。 */
-export function markdownToHtml(source: string): string {
+export function markdownToHtml(source: string, options: MarkdownHtmlOptions = {}): string {
+  const backLabel = options.backLabel ?? "↩";
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const blocks: string[] = [];
   let i = 0;
@@ -152,7 +158,7 @@ export function markdownToHtml(source: string): string {
     }
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading !== null) {
-      blocks.push(`<h${heading[1].length}>${renderInline(heading[2])}</h${heading[1].length}>`);
+      blocks.push(`<h${heading[1].length}>${renderInline(heading[2], backLabel)}</h${heading[1].length}>`);
       i += 1;
       continue;
     }
@@ -167,11 +173,11 @@ export function markdownToHtml(source: string): string {
         tableLines.push(lines[i]);
         i += 1;
       }
-      const table = renderTable(tableLines);
+      const table = renderTable(tableLines, backLabel);
       if (table !== "") blocks.push(table);
       else {
         i -= tableLines.length - 1;
-        blocks.push(`<p>${renderInline(tableLines[0])}</p>`);
+        blocks.push(`<p>${renderInline(tableLines[0], backLabel)}</p>`);
       }
       continue;
     }
@@ -191,7 +197,7 @@ export function markdownToHtml(source: string): string {
     const ordered = /^\s*\d+[.)]\s+/.test(line);
     const bullet = /^\s*[-*+]\s+/.test(line);
     if (ordered || bullet) {
-      const result = renderList(lines, i, ordered);
+      const result = renderList(lines, i, ordered, backLabel);
       blocks.push(result.html);
       i = result.next;
       continue;
@@ -210,7 +216,7 @@ export function markdownToHtml(source: string): string {
       buf.push(lines[i]);
       i += 1;
     }
-    blocks.push(`<p>${renderInline(buf.join("\n").replace(/\n/g, " "))}</p>`);
+    blocks.push(`<p>${renderInline(buf.join("\n").replace(/\n/g, " "), backLabel)}</p>`);
   }
   return blocks.join("");
 }

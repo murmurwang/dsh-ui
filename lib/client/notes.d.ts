@@ -115,7 +115,11 @@ export declare class NotesController {
     /** 旧版独立剪藏块 → 正文里的回链超链接（一次性迁移）。 */
     private migrateLegacyClips;
     close(): void;
-    /** 读取打开中的笔记；有未保存草稿时不覆盖，避免打断用户输入。 */
+    /**
+     * 读取打开中的笔记。
+     * @param id - 目标笔记。
+     * @param force - true 为显式切换（忽略 dirty）；false 为轮询（有草稿时不覆盖）。
+     */
     private loadOpen;
     private startPolling;
     private stopPolling;
@@ -130,6 +134,17 @@ export declare class NotesController {
      */
     addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean>;
     removeNote(id: string): Promise<void>;
+    /**
+     * 以指定版本快照保存（切换笔记时兜底保存上一篇的草稿）：
+     * 不依赖当前 openNote，也不会把草稿误写进新打开的笔记。
+     */
+    saveAs(snapshot: {
+        id: string;
+        version: string;
+    }, input: {
+        title: string;
+        body: string;
+    }): Promise<boolean>;
     /** 重命名（乐观并发；打开的笔记同步视图）。 */
     renameNote(id: string, title: string): Promise<boolean>;
     /** 供剪藏选择器用：按最近更新排序的前若干条。 */

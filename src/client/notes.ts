@@ -222,7 +222,8 @@ export class NotesController {
     if (this.state.openId === id && this.state.openNote !== null) return;
     this.startPolling(id);
     await this.migrateLegacyClips(id);
-    await this.loadOpen(id);
+    // 显式切换强制加载（dirty 保护只作用于同笔记的轮询，不挡切换）。
+    await this.loadOpen(id, true);
     const current = this.state.openNote;
     if (current !== null && current.id === id) {
       this.publish({ lastOpenNoteId: id });
@@ -251,14 +252,18 @@ export class NotesController {
     this.publish({ openId: null, openNote: null, openError: null });
   }
 
-  /** 读取打开中的笔记；有未保存草稿时不覆盖，避免打断用户输入。 */
-  private async loadOpen(id: string): Promise<void> {
+  /**
+   * 读取打开中的笔记。
+   * @param id - 目标笔记。
+   * @param force - true 为显式切换（忽略 dirty）；false 为轮询（有草稿时不覆盖）。
+   */
+  private async loadOpen(id: string, force = false): Promise<void> {
     const result = await this.face().get({ id });
     if (!result.ok) {
       this.publish({ openId: id, openNote: null, openError: result.error.code === "not-found" ? "笔记不存在" : "读取笔记失败" });
       return;
     }
-    if (this.dirty) return; // 本地草稿优先，等保存后再同步。
+    if (this.dirty && !force) return; // 轮询时本地草稿优先，等保存后再同步。
     this.publish({
       openId: id,
       openNote: result.value.note,
@@ -373,6 +378,32 @@ export class NotesController {
       }
     }
     await this.refresh();
+  }
+
+  /**
+   * 以指定版本快照保存（切换笔记时兜底保存上一篇的草稿）：
+   * 不依赖当前 openNote，也不会把草稿误写进新打开的笔记。
+   */
+  async saveAs(
+    snapshot: { id: string; version: string },
+    input: { title: string; body: string },
+  ): Promise<boolean> {
+    try {
+      const result = await this.face().update({
+        id: snapshot.id,
+        ifVersion: snapshot.version,
+        ...input,
+      });
+      if (result.ok) {
+        if (this.state.openNote?.id === snapshot.id) {
+          this.publish({ openNote: result.value.note });
+        }
+        await this.refresh();
+      }
+      return result.ok;
+    } catch {
+      return false;
+    }
   }
 
   /** 重命名（乐观并发；打开的笔记同步视图）。 */

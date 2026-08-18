@@ -57,7 +57,7 @@ export const zh = {
   "note.ask.current": "在当前会话追问",
   "note.ask.work": "让 dsh 在本笔记中工作",
   // 剪藏卡片
-  "clip.back": "回到会话",
+  "clip.back": "查看原对话",
   "clip.remove": "删除",
   // 错误
   "error.noSession": "当前没有可用的对话",
@@ -117,7 +117,7 @@ export const en = {
   "note.ask.newSession": "Ask in a new session",
   "note.ask.current": "Ask in current session",
   "note.ask.work": "Let dsh work in this note",
-  "clip.back": "Back to session",
+  "clip.back": "View original chat",
   "clip.remove": "Remove",
   "error.noSession": "No active conversation",
   "error.fork": "Failed to create branch",

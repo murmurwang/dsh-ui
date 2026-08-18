@@ -47,6 +47,23 @@ export function NoteEditor(props: NoteEditorProps) {
   const open = state.openNote;
   const dirty = title !== savedTitle || body !== savedBody;
   const [bounds, setBounds] = React.useState<{ left: number; width: number } | null>(null);
+  const prevOpenRef = React.useRef<{ id: string; version: string } | null>(null);
+
+  // 切换笔记：先把上一篇的未保存草稿按旧版本号兜底保存，
+  // 再无条件把编辑器重置为新笔记内容（否则 dirty 保护会卡在旧内容）。
+  React.useEffect(() => {
+    const prev = prevOpenRef.current;
+    prevOpenRef.current = open === null ? null : { id: open.id, version: open.version };
+    if (prev === null || open === null || prev.id === open.id) return;
+    if (title !== savedTitle || body !== savedBody) {
+      void notes.saveAs(prev, { title, body });
+    }
+    setTitle(open.title);
+    setBody(open.body);
+    setSavedTitle(open.title);
+    setSavedBody(open.body);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open?.id]);
 
   // 笔记页覆盖对话中心列：以 [data-conversation-scroll] 为锚测量左缘与宽度，
   // 侧栏保持可见可点；侧栏折叠/窗口变化经 ResizeObserver + resize 重测。
@@ -160,8 +177,10 @@ export function NoteEditor(props: NoteEditorProps) {
 
       <div className="dshui-note-body">
         <NoteBody
+          key={open.id}
           source={body}
           placeholder={t("note.body.placeholder")}
+          backLabel={t("clip.back")}
           onSourceChange={setBody}
           onSessionLink={props.openSession}
           onAtChange={setAtOpen}

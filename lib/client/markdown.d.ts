@@ -6,7 +6,11 @@
  * - serializeToMarkdown：把 contentEditable 里的 DOM 序列化回 Markdown，
  *   与 markdownToHtml 互为逆操作（覆盖本插件支持的块级/行内子集）。
  */
+export interface MarkdownHtmlOptions {
+    /** 回链 hover 按钮文案。 */
+    backLabel?: string;
+}
 /** Markdown → 可编辑 HTML 字符串。 */
-export declare function markdownToHtml(source: string): string;
+export declare function markdownToHtml(source: string, options?: MarkdownHtmlOptions): string;
 /** contentEditable DOM → Markdown 源码。 */
 export declare function serializeToMarkdown(root: Element): string;

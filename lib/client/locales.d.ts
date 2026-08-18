@@ -51,7 +51,7 @@ export declare const zh: {
     readonly "note.ask.newSession": "新建会话提问";
     readonly "note.ask.current": "在当前会话追问";
     readonly "note.ask.work": "让 dsh 在本笔记中工作";
-    readonly "clip.back": "回到会话";
+    readonly "clip.back": "查看原对话";
     readonly "clip.remove": "删除";
     readonly "error.noSession": "当前没有可用的对话";
     readonly "error.fork": "创建分支对话失败";
@@ -109,7 +109,7 @@ export declare const en: {
     readonly "note.ask.newSession": "Ask in a new session";
     readonly "note.ask.current": "Ask in current session";
     readonly "note.ask.work": "Let dsh work in this note";
-    readonly "clip.back": "Back to session";
+    readonly "clip.back": "View original chat";
     readonly "clip.remove": "Remove";
     readonly "error.noSession": "No active conversation";
     readonly "error.fork": "Failed to create branch";

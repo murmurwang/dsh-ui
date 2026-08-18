@@ -4,6 +4,8 @@ export interface NoteBodyProps {
     source: string;
     /** 空正文占位提示。 */
     placeholder?: string;
+    /** 回链 hover 按钮文案。 */
+    backLabel?: string;
     /** 用户输入后回写 Markdown 源码。 */
     onSourceChange: (markdown: string) => void;
     /** 点击回链返回按钮。 */
@@ -18,4 +20,4 @@ export interface NoteBodyProps {
  * - dshui:// 回链为灰色文字 + hover 返回按钮（按钮不可编辑、点击回原会话）；
  * - 点击链接文字本体 = 就地编辑，不跳转。
  */
-export declare function NoteBody({ source, placeholder, onSourceChange, onSessionLink, onAtChange }: NoteBodyProps): React.JSX.Element;
+export declare function NoteBody({ source, placeholder, backLabel, onSourceChange, onSessionLink, onAtChange }: NoteBodyProps): React.JSX.Element;
