@@ -55,13 +55,12 @@ writeFileSync(
 
    export function renderAll() {
      const out = [];
+     const renderSlot = () => React.createElement("div", null, "browser");
      out.push(renderToString(React.createElement(SidebarRegion, {
-       wide: true, expandSidebar: noop, t, useWorkspaces: (sel) => sel(wsState), useSessions: (sel) => sel(sState),
-       notes, openSession: noop, newSessionIn: noop, addWorkspace: noop,
+       wide: true, expandSidebar: noop, t, renderSlot, notes, openSession: noop,
      })));
      out.push(renderToString(React.createElement(SidebarRegion, {
-       wide: false, expandSidebar: noop, t, useWorkspaces: (sel) => sel(wsState), useSessions: (sel) => sel(sState),
-       notes, openSession: noop, newSessionIn: noop, addWorkspace: noop,
+       wide: false, expandSidebar: noop, t, renderSlot, notes, openSession: noop,
      })));
      out.push(renderToString(React.createElement(NoteEditor, {
        t, notes, openSession: noop, sessionExists: () => false,
@@ -95,10 +94,10 @@ test("SidebarRegion（wide/narrow）、NoteEditor、Toast、SelectionBar 渲染�
   assert.ok(html.includes("tabs.workspaces"), "侧栏应渲染出三个 tab");
   assert.ok(html.includes("tabs.notes"), "笔记 tab 应存在");
   assert.ok(html.includes("tabs.files"), "文件 tab 应存在");
-  assert.ok(html.includes("ws.add"), "工作区 tab 应渲染添加按钮");
+  assert.ok(html.includes("tabs.files"), "文件 tab 应存在");
 });
 
-test("空工作区状态渲染空提示", () => {
+test("工作区 tab 渲染官方浏览器子座位", () => {
   const html = renderAll();
-  assert.ok(html.includes("ws.empty") || html.includes("ws.add"), "至少渲染出添加/空提示");
+  assert.ok(html.includes("browser"), "工作区 tab 应渲染 browser 子座位");
 });

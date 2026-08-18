@@ -14,6 +14,13 @@ import { Toast } from "./Toast";
 import { NotesController, mountNotesRemote, notesFaceOf } from "./notes";
 import { en, zh, NS } from "./locales";
 import { quoteBlock } from "./quote";
+// 官方 ui-workspace 照搬
+import type {} from "./workspace/contract/slots";
+import { workspaceCss } from "./workspace/_workspaceCss";
+import { WorkspaceBrowser } from "./workspace/WorkspaceBrowser";
+import { createWorkspaceViewStore } from "./workspace/stores";
+import type { WorkspaceBrowserInjected } from "./workspace/contract/slots";
+import { NS as WS_NS, en as wsEn, zh as wsZh } from "./workspace/locales";
 
 /** 客户端 bundle id（即包名），也用于 HMR 的样式标签归属。 */
 const BUNDLE_ID = "dsh-ui";
@@ -42,16 +49,6 @@ const css = `
 .dshui-side-add{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;color:var(--dsw-alias-label-secondary,#4e5969);font-size:12px;line-height:16px;cursor:pointer}
 .dshui-side-add:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 .dshui-side-add-plus{font-size:14px;line-height:16px;color:var(--dsw-alias-label-tertiary,#8a919f)}
-.dshui-side-group{display:flex;flex-direction:column;gap:1px;margin-top:4px}
-.dshui-side-group-header{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;cursor:pointer;color:var(--dsw-alias-label-secondary,#4e5969);font-size:12px;line-height:16px;min-width:0}
-.dshui-side-group-header:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
-.dshui-side-folder{display:inline-flex;flex:none;color:var(--dsw-alias-label-tertiary,#8a919f)}
-.dshui-side-group-label{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
-.dshui-side-group-actions{display:none;flex:none}
-.dshui-side-group-header:hover .dshui-side-group-actions{display:inline-flex}
-.dshui-side-icon-btn{display:inline-flex;border:none;background:transparent;color:var(--dsw-alias-label-tertiary,#8a919f);cursor:pointer;padding:1px;border-radius:4px}
-.dshui-side-icon-btn:hover{color:var(--dsw-alias-label-primary,#1f2329);background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
-.dshui-side-group-rows{display:flex;flex-direction:column;gap:1px;padding-left:14px}
 .dshui-side-row{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border:none;background:transparent;color:var(--dsw-alias-label-primary,#1f2329);cursor:pointer;border-radius:6px;padding:5px 8px;font-size:12px;line-height:16px}
 .dshui-side-row:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 .dshui-side-row-current{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3);color:var(--dsw-static-deepseek-500,#4d6bfe)}
@@ -98,6 +95,7 @@ const css = `
 .dshui-note-atitem:hover{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
 /* toast */
 .dshui-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:1200;background:var(--dsw-alias-bg-overlay,#fff);color:var(--dsw-alias-label-primary,#1f2329);border:1px solid var(--dsw-alias-border-l2,#e2e4e9);border-radius:999px;padding:7px 16px;font-size:12px;line-height:18px;box-shadow:var(--dsw-shadow-lv2,0 6px 24px rgba(15,23,42,.14))}
+` + workspaceCss + `
 `;
 
 /** 注入样式；带 data-plugin 归属，配合 dsh-client-hmr 的样式清理。 */
@@ -153,6 +151,7 @@ function focusComposer(): void {
 export function apply(ctx: ClientContext): void {
   injectStyles();
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-ui: dictionaries");
+  ctx.effect(() => ctx.locale.register(WS_NS, { zh: wsZh, en: wsEn }), "dsh-ui: workspace dictionaries");
 
   const sessions = ctx.sessions;
   const workspaces = ctx.workspaces;
@@ -295,6 +294,7 @@ export function apply(ctx: ClientContext): void {
     sessions.list.getSnapshot().byId[sessionId as SessionId] !== undefined;
 
   // 侧栏：接管工作区座位，三分栏（工作区 / 笔记 / 文件）。
+  // 工作区 tab 经子座位渲染官方 WorkspaceBrowser（store/inject/locale 全套照搬）。
   ctx.slots.inject("sidebar.workspaces", () =>
     ctx.slots.register(
       {
@@ -302,25 +302,77 @@ export function apply(ctx: ClientContext): void {
         // 官方内置工作区面板默认注册在 priority 0；single 槽位同优先级会抛错。
         // 用更低的 -1 注册以遮蔽内置面板（槽位规则：数值最低的注册负责渲染）。
         priority: -1,
+        children: {
+          "sidebar.workspaces.browser": { kind: "single", scope: "root" },
+        },
         locale: NS,
         inject: () => ({
           notes,
           openSession,
-          newSessionIn: (workspaceId: string) => {
-            void workspaces
-              .connectWorkspace(workspaceId as WorkspaceId)
-              .then((sessionId) => {
-                sessions.open(sessionId);
-              });
-          },
-          addWorkspace: () => {
-            void workspaces
-              .pickDirectory()
-              .then((path) => (path === null ? null : workspaces.create({ path })));
-          },
         }),
       },
       SidebarRegion,
+    ),
+  );
+
+  // 官方浏览器注入面（与官方 apply 一致的接线，目录流洞换成原生 picker）。
+  const browserInjected = (): WorkspaceBrowserInjected => ({
+    startSession: (workspaceId) => {
+      ctx.workspaces.startSession(workspaceId);
+    },
+    open: (sessionId) => {
+      ctx.sessions.open(sessionId);
+    },
+    searchSessions: async (query, signal) => {
+      const result = await ctx.sessions.search(query, signal);
+      if (!result.ok) throw new Error(result.error.message);
+      return result.value;
+    },
+    searchResultLimit: ctx.sessions.searchResultLimit,
+    renameSession: async (sessionId, title) => {
+      const session = ctx.sessions.binding(sessionId)?.session;
+      if (session === undefined) throw new Error(`unknown session "${String(sessionId)}"`);
+      const result = await session.rename(title);
+      if (!result.ok) throw new Error(result.error.message);
+    },
+    forkSession: (sessionId) => {
+      void ctx.sessions
+        .fork({ sessionId, increaseTitle: true })
+        .then((childId) => {
+          ctx.sessions.open(childId);
+        })
+        .catch(() => {
+          // Fork 或子标题失败：保持当前选择。
+        });
+    },
+    renameWorkspace: async (workspaceId, title) => {
+      await ctx.workspaces.rename(workspaceId, title);
+    },
+    deleteWorkspace: async (workspaceId) => {
+      await ctx.workspaces.delete(workspaceId);
+    },
+    insertWorkspaceBefore: async (workspaceId, beforeWorkspaceId) => {
+      await ctx.workspaces.insertBefore(workspaceId, beforeWorkspaceId);
+    },
+    archiveSession: async (sessionId) => {
+      await ctx.workspaces.archiveSession(sessionId);
+    },
+    insertSessionBefore: async (workspaceId, sessionId, beforeSessionId) => {
+      await ctx.workspaces.insertSessionBefore(workspaceId, sessionId, beforeSessionId);
+    },
+    createWorkspace: (input) => ctx.workspaces.create(input),
+    pickWorkspacePath: () => ctx.workspaces.pickDirectory(),
+  });
+
+  ctx.slots.inject("sidebar.workspaces.browser", () =>
+    ctx.slots.register(
+      {
+        name: "sidebar.workspaces.browser",
+        store: createWorkspaceViewStore(),
+        inject: browserInjected,
+        locale: WS_NS,
+      },
+      WorkspaceBrowser,
     ),
   );
 

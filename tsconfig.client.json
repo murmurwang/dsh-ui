@@ -8,6 +8,7 @@
     "strict": true,
     "skipLibCheck": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "emitDeclarationOnly": true,
