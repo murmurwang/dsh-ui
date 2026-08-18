@@ -40,10 +40,13 @@ function readTab(): Tab {
 function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
   const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
   const [menuId, setMenuId] = React.useState<string | null>(null);
-  const [renameTarget, setRenameTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [renameTarget, setRenameTarget] = React.useState<{ id: string; currentTitle: string } | null>(null);
+  const [renameDraft, setRenameDraft] = React.useState("");
+  const [renaming, setRenaming] = React.useState(false);
+  const [renameError, setRenameError] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; title: string } | null>(null);
-  const [renameValue, setRenameValue] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const composingRef = React.useRef(false);
 
   const onCreate = () => {
     void notes.create("").then((note) => {
@@ -60,20 +63,36 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
     // 延迟一拍再开弹窗：菜单 portal 卸载时，WebKit 会把点击重定向到
     // 指针下方新出现的 Modal 遮罩（onClick=onClose），导致弹窗闪退。
     if (id === "rename") {
-      setRenameValue(item.title);
-      window.setTimeout(() => setRenameTarget({ id: noteId, title: item.title }), 0);
+      setRenameDraft(item.title);
+      window.setTimeout(() => setRenameTarget({ id: noteId, currentTitle: item.title }), 0);
     } else if (id === "delete") {
       window.setTimeout(() => setDeleteTarget({ id: noteId, title: item.title }), 0);
     }
   };
 
-  const submitRename = () => {
-    if (renameTarget === null || renameValue.trim() === "") return;
-    setBusy(true);
-    void notes.renameNote(renameTarget.id, renameValue.trim()).finally(() => {
-      setBusy(false);
-      setRenameTarget(null);
-    });
+  const renameTrimmed = renameDraft.trim();
+  const renameBlocked =
+    renaming || renameTrimmed === "" || renameTarget === null || renameTrimmed === renameTarget.currentTitle;
+  const closeRename = () => {
+    if (renaming) return;
+    setRenameTarget(null);
+    setRenameError(null);
+  };
+  const confirmRename = () => {
+    if (renameBlocked || renameTarget === null) return;
+    setRenaming(true);
+    setRenameError(null);
+    void notes.renameNote(renameTarget.id, renameTrimmed).then(
+      (ok) => {
+        setRenaming(false);
+        setRenameTarget(null);
+        if (!ok) setRenameError("重命名失败（笔记可能已被修改）");
+      },
+      () => {
+        setRenaming(false);
+        setRenameError("重命名失败（网络）");
+      },
+    );
   };
 
   const confirmDelete = () => {
@@ -135,40 +154,48 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
         </div>
       ))}
 
-      {/* 重命名弹窗 */}
+      {/* 重命名弹窗（与官方工作区重命名同款交互） */}
       <Modal
         open={renameTarget !== null}
-        onClose={() => setRenameTarget(null)}
+        onClose={closeRename}
         closeLabel={t("cancel")}
         title={t("note.rename.title")}
         footer={(
           <>
-            <Button variant="outline" onClick={() => setRenameTarget(null)} disabled={busy}>
-              {t("cancel")}
-            </Button>
-            <Button variant="primary" onClick={submitRename} disabled={busy || renameValue.trim() === ""}>
-              {t("confirm")}
-            </Button>
+            <Button variant="outline" disabled={renaming} onClick={closeRename}>{t("cancel")}</Button>
+            <Button variant="primary" disabled={renameBlocked} onClick={confirmRename}>{t("confirm")}</Button>
           </>
         )}
       >
         <input
           className="dshui-note-rename-input"
-          value={renameValue}
-          ref={(el) => {
-            if (el !== null) {
-              window.setTimeout(() => {
-                el.focus();
-                el.select();
-              }, 50);
+          value={renameDraft}
+          aria-label={t("note.title.placeholder")}
+          autoFocus
+          disabled={renaming}
+          onFocus={(e) => {
+            e.target.select();
+          }}
+          onChange={(e) => {
+            setRenameDraft(e.target.value);
+            setRenameError(null);
+          }}
+          onCompositionStart={() => {
+            composingRef.current = true;
+          }}
+          onCompositionEnd={() => {
+            composingRef.current = false;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !composingRef.current) {
+              e.preventDefault();
+              confirmRename();
             }
           }}
-          placeholder={t("note.title.placeholder")}
-          onChange={(ev) => setRenameValue(ev.target.value)}
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter") submitRename();
-          }}
         />
+        {renameError !== null ? (
+          <div className="dshui-note-rename-error" role="alert">{renameError}</div>
+        ) : null}
       </Modal>
 
       {/* 删除确认弹窗 */}

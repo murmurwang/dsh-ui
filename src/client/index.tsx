@@ -60,7 +60,9 @@ const css = `
 .dshui-side-row-wrap:hover .dshui-side-row-actions{display:inline-flex}
 .dshui-side-icon-btn{display:inline-flex;border:none;background:transparent;color:var(--dsw-alias-label-tertiary,#8a919f);cursor:pointer;padding:2px;border-radius:4px}
 .dshui-side-icon-btn:hover{color:var(--dsw-alias-label-primary,#1f2329);background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
-.dshui-note-rename-input{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2,#e2e4e9);width:100%;height:36px;color:var(--dsw-alias-label-primary,#1f2329);background:transparent;border-radius:8px;outline:none;padding:6px 10px;font-size:14px}
+.dshui-note-rename-input{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2,#e2e4e9);width:100%;height:44px;color:var(--dsw-alias-label-primary,#1f2329);background:transparent;border-radius:22px;outline:none;padding:7px 14px;font-size:14px;font-weight:400;line-height:22px}
+.dshui-note-rename-input:disabled{color:var(--dsw-alias-label-dimmed,#8a919f)}
+.dshui-note-rename-error{color:var(--dsw-alias-state-error-primary,#d03050);margin-top:8px;font-size:12px;line-height:18px}
 .dshui-note-delete-desc{color:var(--dsw-alias-label-secondary,#4e5969);font-size:13px;line-height:20px}
 .dshui-danger{background:var(--dsw-alias-state-error-primary,#d03050)}
 .dshui-side-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#8a919f);font-size:12px;line-height:18px}
