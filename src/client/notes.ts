@@ -82,11 +82,14 @@ export interface NotesSnapshot {
   saveError: string | null;
   /** 剪藏落点记忆（最近一次保存剪藏的笔记 id）。 */
   lastClipNoteId: string | null;
+  /** 上次打开的笔记 id（切到笔记 tab 时主区默认恢复它）。 */
+  lastOpenNoteId: string | null;
   /** 轻量 toast（底部提示）。 */
   toast: { text: string; seq: number } | null;
 }
 
 const LAST_NOTE_KEY = "dsh-ui.last-clip-note";
+const LAST_OPEN_KEY = "dsh-ui.last-open-note";
 
 function readLastNoteId(): string | null {
   try {
@@ -94,6 +97,28 @@ function readLastNoteId(): string | null {
   } catch {
     return null;
   }
+}
+
+function readLastOpenId(): string | null {
+  try {
+    return localStorage.getItem(LAST_OPEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistLastOpenId(id: string): void {
+  try {
+    localStorage.setItem(LAST_OPEN_KEY, id);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 剪藏 → 正文内的一条回链超链接行。 */
+function clipLinkLine(clip: { text: string; sessionId: string }): string {
+  const text = clip.text.replace(/\s+/g, " ").trim();
+  return `[${text}](dshui://session/${clip.sessionId})`;
 }
 
 const POLL_MS = 3000;
@@ -111,6 +136,7 @@ export class NotesController {
     savedAt: null,
     saveError: null,
     lastClipNoteId: readLastNoteId(),
+    lastOpenNoteId: readLastOpenId(),
     toast: null,
   };
   private listeners = new Set<() => void>();
@@ -195,7 +221,29 @@ export class NotesController {
   async open(id: string): Promise<void> {
     if (this.state.openId === id && this.state.openNote !== null) return;
     this.startPolling(id);
+    await this.migrateLegacyClips(id);
     await this.loadOpen(id);
+    const current = this.state.openNote;
+    if (current !== null && current.id === id) {
+      this.publish({ lastOpenNoteId: id });
+      persistLastOpenId(id);
+    }
+  }
+
+  /** 旧版独立剪藏块 → 正文里的回链超链接（一次性迁移）。 */
+  private async migrateLegacyClips(id: string): Promise<void> {
+    const remote = this.remote;
+    if (remote === null) return;
+    const result = await remote.get({ id });
+    if (!result.ok) return;
+    const note = result.value.note;
+    if (note.clips.length === 0) return;
+    const lines = note.clips.map(clipLinkLine).join("\n\n");
+    const body =
+      note.body.trim() === ""
+        ? `${lines}\n`
+        : `${note.body.replace(/\s+$/, "")}\n\n${lines}\n`;
+    await remote.update({ id, ifVersion: note.version, body });
   }
 
   close(): void {
@@ -269,7 +317,10 @@ export class NotesController {
     }
   }
 
-  /** 把剪藏追加到指定笔记（若该笔记正打开，直接更新视图）。 */
+  /**
+   * 把剪藏存进指定笔记：正文末尾追加一段“回链超链接文字”
+   * （链接文字 = 引用原文，目标 = 原会话）。若该笔记正打开，直接更新视图。
+   */
   async addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean> {
     try {
       const target = await this.face().get({ id: noteId });
@@ -277,10 +328,16 @@ export class NotesController {
         this.notifyToast("目标笔记不存在");
         return false;
       }
+      const note = target.value.note;
+      const line = clipLinkLine(clip);
+      const body =
+        note.body.trim() === ""
+          ? `${line}\n`
+          : `${note.body.replace(/\s+$/, "")}\n\n${line}\n`;
       const result = await this.face().update({
         id: noteId,
-        ifVersion: target.value.note.version,
-        addClip: clip,
+        ifVersion: note.version,
+        body,
       });
       if (!result.ok) {
         this.notifyToast("剪藏失败（笔记可能已被修改，请重试）");
@@ -302,17 +359,6 @@ export class NotesController {
       this.notifyToast("剪藏失败（网络）");
       return false;
     }
-  }
-
-  async removeClip(noteId: string, clipId: string): Promise<void> {
-    const open = this.state.openNote;
-    if (open === null || open.id !== noteId) return;
-    const result = await this.face().update({
-      id: noteId,
-      ifVersion: open.version,
-      removeClipId: clipId,
-    });
-    if (result.ok) this.publish({ openNote: result.value.note });
   }
 
   async removeNote(id: string): Promise<void> {

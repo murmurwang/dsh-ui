@@ -63,14 +63,6 @@ const css = `
 .dshui-note-state{font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption,#8a919f)}
 .dshui-note-error{padding:6px 16px;font-size:12px;line-height:16px;color:var(--dsw-alias-state-error-primary,#d03050);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#d03050) 8%,transparent)}
 .dshui-note-body{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:16px;max-width:860px;width:100%;margin:0 auto}
-.dshui-note-clips{display:flex;flex-direction:column;gap:8px}
-.dshui-note-clip{border:1px solid var(--dsw-alias-border-l1,#e5e6eb);border-radius:10px;padding:10px 12px;background:var(--dsw-alias-bg-layer-2,#f7f8fa)}
-.dshui-note-clip-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
-.dshui-note-clip-src{font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption,#8a919f)}
-.dshui-note-clip-actions{display:flex;gap:6px}
-.dshui-link-btn{border:none;background:transparent;color:var(--dsw-static-deepseek-500,#4d6bfe);cursor:pointer;font-size:11px;line-height:16px;padding:0}
-.dshui-link-btn:disabled{opacity:.45;cursor:default}
-.dshui-note-clip-text{margin:0;color:var(--dsw-alias-label-secondary,#4e5969);font-size:13px;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere;border-left:2px solid var(--dsw-alias-border-l2,#e2e4e9);padding-left:10px}
 .dshui-note-textarea{flex:none;min-height:calc(100vh - 260px);overflow-y:hidden;resize:none;border:1px solid var(--dsw-alias-border-l1,#e5e6eb);border-radius:10px;padding:12px;font:var(--dsw-font-markdown-code-block-small,13px/20px ui-monospace,SFMono-Regular,Menlo,monospace);color:var(--dsw-alias-label-primary,#1f2329);background:transparent;outline:none}
 .dshui-note-preview{flex:1;overflow-y:auto;border:1px solid var(--dsw-alias-border-l1,#e5e6eb);border-radius:10px;padding:12px 16px;font-size:14px;line-height:22px;color:var(--dsw-alias-label-primary,#1f2329)}
 .dshui-note-preview-empty{color:var(--dsw-alias-label-tertiary,#8a919f)}
@@ -401,7 +393,6 @@ export function apply(ctx: ClientContext): void {
         inject: () => ({
           notes,
           openSession,
-          sessionExists,
           askInNewSession: (contextText: string) => {
             notes.close();
             void prefillNewSession(contextText);

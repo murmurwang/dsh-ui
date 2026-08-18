@@ -6,7 +6,6 @@ export interface NoteEditorProps {
     t: TranslateNS<typeof NS>;
     notes: NotesController;
     openSession: (sessionId: string) => void;
-    sessionExists: (sessionId: string) => boolean;
     /** 新建会话并把笔记内容预填为上下文。 */
     askInNewSession: (contextText: string) => void;
     /** 在当前会话追问（预填笔记内容）。 */

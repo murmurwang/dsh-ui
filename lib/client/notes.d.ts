@@ -82,6 +82,8 @@ export interface NotesSnapshot {
     saveError: string | null;
     /** 剪藏落点记忆（最近一次保存剪藏的笔记 id）。 */
     lastClipNoteId: string | null;
+    /** 上次打开的笔记 id（切到笔记 tab 时主区默认恢复它）。 */
+    lastOpenNoteId: string | null;
     /** 轻量 toast（底部提示）。 */
     toast: {
         text: string;
@@ -110,6 +112,8 @@ export declare class NotesController {
     refresh(): Promise<void>;
     create(title: string): Promise<Note | null>;
     open(id: string): Promise<void>;
+    /** 旧版独立剪藏块 → 正文里的回链超链接（一次性迁移）。 */
+    private migrateLegacyClips;
     close(): void;
     /** 读取打开中的笔记；有未保存草稿时不覆盖，避免打断用户输入。 */
     private loadOpen;
@@ -120,9 +124,11 @@ export declare class NotesController {
         title?: string;
         body?: string;
     }): Promise<boolean>;
-    /** 把剪藏追加到指定笔记（若该笔记正打开，直接更新视图）。 */
+    /**
+     * 把剪藏存进指定笔记：正文末尾追加一段“回链超链接文字”
+     * （链接文字 = 引用原文，目标 = 原会话）。若该笔记正打开，直接更新视图。
+     */
     addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean>;
-    removeClip(noteId: string, clipId: string): Promise<void>;
     removeNote(id: string): Promise<void>;
     /** 供剪藏选择器用：按最近更新排序的前若干条。 */
     recentItems(limit?: number): NoteListItem[];

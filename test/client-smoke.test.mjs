@@ -244,17 +244,15 @@ test("feature 1：追问所选部分与新分支追问仍工作", async () => {
   assert.equal(calls.drafts.get("s2"), "> 分支我\n\n");
 });
 
-test("feature 2：划线剪藏走 notes.update(addClip)", async () => {
+test("feature 2：划线剪藏成为正文里的回链超链接", async () => {
   const { calls } = loadAndApply();
   await sleep(10);
   const bar = byName(calls, "shell.overlay").find((r) => r.id === "dsh-ui.selection-bar").inject();
   const ok = await bar.saveClip("n1", "剪藏文本");
   assert.equal(ok, true);
-  const update = calls.remoteUpdates.find((u) => u.addClip !== undefined);
-  assert.ok(update, "应发出带 addClip 的 update");
-  assert.equal(update.addClip.text, "剪藏文本");
-  assert.equal(update.addClip.sessionId, "s1");
-  assert.equal(update.addClip.sessionTitle, "会话一");
+  const update = calls.remoteUpdates.find((u) => u.body !== undefined);
+  assert.ok(update, "应发出带 body 的 update");
+  assert.equal(update.body, "[剪藏文本](dshui://session/s1)\n");
 });
 
 test("feature 2：@dsh 动作（当前会话 / 新建会话）预填笔记内容", async () => {

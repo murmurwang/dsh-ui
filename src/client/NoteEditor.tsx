@@ -8,7 +8,6 @@ export interface NoteEditorProps {
   t: TranslateNS<typeof NS>;
   notes: NotesController;
   openSession: (sessionId: string) => void;
-  sessionExists: (sessionId: string) => boolean;
   /** 新建会话并把笔记内容预填为上下文。 */
   askInNewSession: (contextText: string) => void;
   /** 在当前会话追问（预填笔记内容）。 */
@@ -25,11 +24,8 @@ function detectAtTrigger(text: string, caret: number): boolean {
   return /(^|\s)@([\p{L}\p{N}_-]{0,16})$/u.test(prefix);
 }
 
-function clipContext(open: { title: string; id: string; body: string; clips: { text: string }[] }): string {
+function clipContext(open: { title: string; id: string; body: string }): string {
   const parts: string[] = [`📓 笔记《${open.title}》（noteId: ${open.id}）`];
-  if (open.clips.length > 0) {
-    parts.push(`剪藏：\n${open.clips.map((c) => `> ${c.text}`).join("\n\n")}`);
-  }
   if (open.body.trim() !== "") {
     parts.push(`正文：\n${open.body.slice(0, 12000)}`);
   }
@@ -162,39 +158,6 @@ export function NoteEditor(props: NoteEditorProps) {
       ) : null}
 
       <div className="dshui-note-body">
-        {open.clips.length > 0 ? (
-          <div className="dshui-note-clips">
-            {open.clips.map((clip) => (
-              <div key={clip.id} className="dshui-note-clip">
-                <div className="dshui-note-clip-meta">
-                  <span className="dshui-note-clip-src">
-                    {clip.sessionTitle ?? clip.sessionId.slice(0, 12)}
-                  </span>
-                  <span className="dshui-note-clip-actions">
-                    <button
-                      type="button"
-                      className="dshui-link-btn"
-                      disabled={!props.sessionExists(clip.sessionId)}
-                      title={t("clip.back")}
-                      onClick={() => props.openSession(clip.sessionId)}
-                    >
-                      {t("clip.back")}
-                    </button>
-                    <button
-                      type="button"
-                      className="dshui-link-btn"
-                      onClick={() => void notes.removeClip(open.id, clip.id)}
-                    >
-                      {t("clip.remove")}
-                    </button>
-                  </span>
-                </div>
-                <blockquote className="dshui-note-clip-text">{clip.text}</blockquote>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
         {mode === "edit" ? (
           <textarea
             ref={textareaRef}
@@ -213,7 +176,17 @@ export function NoteEditor(props: NoteEditorProps) {
             }}
           />
         ) : (
-          <div className="dshui-note-preview dshui-markdown">
+          <div
+            className="dshui-note-preview dshui-markdown"
+            onClick={(ev) => {
+              const anchor = (ev.target as HTMLElement).closest?.("a[href^='dshui://']");
+              if (anchor === null || anchor === undefined) return;
+              ev.preventDefault();
+              const href = anchor.getAttribute("href") ?? "";
+              const sessionId = href.slice("dshui://session/".length);
+              if (sessionId !== "") props.openSession(sessionId);
+            }}
+          >
             {open.body.trim() === "" ? (
               <span className="dshui-note-preview-empty">{t("note.preview.empty")}</span>
             ) : (
