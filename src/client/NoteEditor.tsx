@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import type { NotesController } from "./notes";
-import { MarkdownView } from "./markdown";
+import { NoteBody } from "./NoteBody";
 import { NS } from "./locales";
 
 export interface NoteEditorProps {
@@ -14,14 +14,6 @@ export interface NoteEditorProps {
   askInCurrent: (contextText: string) => void;
   /** 让 dsh 在本笔记中工作（新会话 + 工具写回模板）。 */
   workInNote: (template: string) => void;
-}
-
-type ViewMode = "edit" | "preview";
-
-/** 检测输入框光标前是否正处于 @ 触发状态。 */
-function detectAtTrigger(text: string, caret: number): boolean {
-  const prefix = text.slice(0, caret);
-  return /(^|\s)@([\p{L}\p{N}_-]{0,16})$/u.test(prefix);
 }
 
 function clipContext(open: { title: string; id: string; body: string }): string {
@@ -42,7 +34,7 @@ function workTemplate(open: { title: string; id: string }): string {
   ].join("\n");
 }
 
-/** 全屏笔记编辑器（覆盖在会话区之上）。 */
+/** 笔记页：右侧主区、Notion 式所见即所得（无预览/编辑之分）。 */
 export function NoteEditor(props: NoteEditorProps) {
   const { t, notes } = props;
   const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
@@ -50,9 +42,7 @@ export function NoteEditor(props: NoteEditorProps) {
   const [body, setBody] = React.useState("");
   const [savedTitle, setSavedTitle] = React.useState("");
   const [savedBody, setSavedBody] = React.useState("");
-  const [mode, setMode] = React.useState<ViewMode>("preview");
   const [atOpen, setAtOpen] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const open = state.openNote;
   const dirty = title !== savedTitle || body !== savedBody;
@@ -93,24 +83,6 @@ export function NoteEditor(props: NoteEditorProps) {
   React.useEffect(() => {
     notes.setDirty(dirty);
   }, [dirty, notes]);
-
-  // 打开不同笔记时回到渲染（预览）视图。
-  React.useEffect(() => {
-    setMode("preview");
-  }, [open?.id]);
-
-  // 编辑态：textarea 随内容自动长高（外层 body 滚动），长笔记可完整滚动。
-  const resizeTextarea = React.useCallback(() => {
-    const el = textareaRef.current;
-    if (el === null) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight + 2}px`;
-  }, []);
-
-  React.useEffect(() => {
-    if (mode !== "edit") return;
-    resizeTextarea();
-  }, [body, mode, open?.id, resizeTextarea]);
 
   // Esc 关闭。
   React.useEffect(() => {
@@ -177,13 +149,6 @@ export function NoteEditor(props: NoteEditorProps) {
           <span className="dshui-note-state">
             {state.saving ? t("note.saving") : dirty ? t("note.dirty") : state.savedAt !== null ? t("note.saved") : ""}
           </span>
-          <button
-            type="button"
-            className={mode === "edit" ? "dshui-pop-btn dshui-pop-btn-primary" : "dshui-pop-btn"}
-            onClick={() => setMode(mode === "edit" ? "preview" : "edit")}
-          >
-            {mode === "edit" ? t("note.view.preview") : t("note.view.edit")}
-          </button>
         </div>
       </div>
 
@@ -194,42 +159,13 @@ export function NoteEditor(props: NoteEditorProps) {
       ) : null}
 
       <div className="dshui-note-body">
-        {mode === "edit" ? (
-          <textarea
-            ref={textareaRef}
-            className="dshui-note-textarea"
-            value={body}
-            placeholder={t("note.body.placeholder")}
-            onChange={(ev) => {
-              setBody(ev.target.value);
-              const caret = ev.target.selectionStart ?? ev.target.value.length;
-              setAtOpen(detectAtTrigger(ev.target.value, caret));
-            }}
-            onKeyUp={(ev) => {
-              const el = ev.currentTarget;
-              const caret = el.selectionStart ?? el.value.length;
-              setAtOpen(detectAtTrigger(el.value, caret));
-            }}
-          />
-        ) : (
-          <div
-            className="dshui-note-preview dshui-markdown"
-            onClick={(ev) => {
-              const anchor = (ev.target as HTMLElement).closest?.("a[href^='dshui://']");
-              if (anchor === null || anchor === undefined) return;
-              ev.preventDefault();
-              const href = anchor.getAttribute("href") ?? "";
-              const sessionId = href.slice("dshui://session/".length);
-              if (sessionId !== "") props.openSession(sessionId);
-            }}
-          >
-            {open.body.trim() === "" ? (
-              <span className="dshui-note-preview-empty">{t("note.preview.empty")}</span>
-            ) : (
-              <MarkdownView source={open.body} />
-            )}
-          </div>
-        )}
+        <NoteBody
+          source={body}
+          placeholder={t("note.body.placeholder")}
+          onSourceChange={setBody}
+          onSessionLink={props.openSession}
+          onAtChange={setAtOpen}
+        />
       </div>
 
       <div className="dshui-note-foot">

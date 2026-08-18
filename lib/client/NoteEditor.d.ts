@@ -13,5 +13,5 @@ export interface NoteEditorProps {
     /** 让 dsh 在本笔记中工作（新会话 + 工具写回模板）。 */
     workInNote: (template: string) => void;
 }
-/** 全屏笔记编辑器（覆盖在会话区之上）。 */
+/** 笔记页：右侧主区、Notion 式所见即所得（无预览/编辑之分）。 */
 export declare function NoteEditor(props: NoteEditorProps): React.JSX.Element | null;

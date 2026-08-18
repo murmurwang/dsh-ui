@@ -1,51 +1,67 @@
-import * as React from "react";
-
 /**
- * 轻量 Markdown 渲染器（无外部依赖，仅预览用）：
- * 标题、段落、引用、有序/无序列表（两级嵌套）、围栏代码块、
- * 分隔线、GFM 表格、行内加粗/斜体/删除线/行内代码/链接。
- * 输出走 React 文本节点，天然转义原始 HTML。
+ * 笔记正文的 Markdown ↔ HTML 双向转换（Notion 式所见即所得编辑器的内核）。
+ *
+ * - markdownToHtml：把笔记正文（Markdown 源码）渲染成可编辑 HTML；
+ *   dshui:// 回链渲染为「灰色链接 + hover 返回按钮」的包裹结构。
+ * - serializeToMarkdown：把 contentEditable 里的 DOM 序列化回 Markdown，
+ *   与 markdownToHtml 互为逆操作（覆盖本插件支持的块级/行内子集）。
  */
 
-type InlineNode = string | React.ReactElement;
+const ESCAPE_RE = /[&<>"]/g;
+const ESCAPES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+};
 
-const INLINE_RE = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(__[^_]+__)|(_[^_]+_)|(~~[^~]+~~)|(`[^`]+`)|(\[[^\]]*\]\([^)]*\))/g;
+function escapeHtml(text: string): string {
+  return text.replace(ESCAPE_RE, (ch) => ESCAPES[ch]);
+}
 
-function renderInline(text: string, keyBase: string): InlineNode[] {
-  const nodes: InlineNode[] = [];
+const INLINE_RE =
+  /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(__[^_]+__)|(_[^_]+_)|(~~[^~]+~~)|(`[^`]+`)|(\[[^\]]*\]\([^)]*\))/g;
+
+const DSHUI_LINK_RE = /^dshui:\/\/session\/(.+)$/;
+
+function renderInline(text: string): string {
+  let out = "";
   let last = 0;
   let match: RegExpExecArray | null;
   INLINE_RE.lastIndex = 0;
-  let i = 0;
   while ((match = INLINE_RE.exec(text)) !== null) {
-    if (match.index > last) nodes.push(text.slice(last, match.index));
+    if (match.index > last) out += escapeHtml(text.slice(last, match.index));
     const [whole, bold, italic, boldU, italicU, strike, code, link] = match;
-    const key = `${keyBase}-${i++}`;
     if (bold !== undefined || boldU !== undefined) {
-      nodes.push(<strong key={key}>{whole.slice(2, -2)}</strong>);
+      out += `<strong>${escapeHtml(whole.slice(2, -2))}</strong>`;
     } else if (italic !== undefined || italicU !== undefined) {
-      nodes.push(<em key={key}>{whole.slice(1, -1)}</em>);
+      out += `<em>${escapeHtml(whole.slice(1, -1))}</em>`;
     } else if (strike !== undefined) {
-      nodes.push(<del key={key}>{whole.slice(2, -2)}</del>);
+      out += `<del>${escapeHtml(whole.slice(2, -2))}</del>`;
     } else if (code !== undefined) {
-      nodes.push(<code key={key}>{whole.slice(1, -1)}</code>);
+      out += `<code>${escapeHtml(whole.slice(1, -1))}</code>`;
     } else if (link !== undefined) {
       const label = whole.slice(1, whole.indexOf("]("));
       const href = whole.slice(whole.indexOf("](") + 2, -1).trim();
-      nodes.push(
-        <a key={key} href={href} target="_blank" rel="noreferrer">
-          {label}
-        </a>,
-      );
+      const session = DSHUI_LINK_RE.exec(href);
+      if (session !== null) {
+        out +=
+          `<span class="dshui-link-wrap">` +
+          `<a class="dshui-link" data-href="${escapeHtml(href)}">${escapeHtml(label)}</a>` +
+          `<button class="dshui-link-back" type="button" contenteditable="false" data-session="${escapeHtml(session[1])}">↩</button>` +
+          `</span>`;
+      } else {
+        out += `<a class="dshui-extlink" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
+      }
     }
     last = match.index + whole.length;
   }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
+  if (last < text.length) out += escapeHtml(text.slice(last));
+  return out;
 }
 
-function renderTable(lines: string[], keyBase: string): React.ReactElement | null {
-  if (lines.length < 2) return null;
+function renderTable(lines: string[]): string {
+  if (lines.length < 2) return "";
   const split = (line: string) =>
     line
       .replace(/^\s*\|/, "")
@@ -54,52 +70,45 @@ function renderTable(lines: string[], keyBase: string): React.ReactElement | nul
       .map((cell) => cell.trim());
   const header = split(lines[0]);
   const sep = split(lines[1]);
-  if (sep.length === 0 || !sep.every((cell) => /^:?-{1,}:?$/.test(cell))) return null;
+  if (sep.length === 0 || !sep.every((cell) => /^:?-{1,}:?$/.test(cell))) return "";
   const aligns = sep.map((cell) =>
-    cell.startsWith(":") && cell.endsWith(":") ? "center" : cell.endsWith(":") ? "right" : "left",
+    cell.startsWith(":") && cell.endsWith(":")
+      ? ' style="text-align:center"'
+      : cell.endsWith(":")
+        ? ' style="text-align:right"'
+        : "",
   );
   const rows = lines.slice(2).map(split);
-  return (
-    <table key={keyBase}>
-      <thead>
-        <tr>
-          {header.map((cell, i) => (
-            <th key={i} style={{ textAlign: aligns[i] ?? "left" }}>
-              {renderInline(cell, `${keyBase}-h${i}`)}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, ri) => (
-          <tr key={ri}>
-            {header.map((_, ci) => (
-              <td key={ci} style={{ textAlign: aligns[ci] ?? "left" }}>
-                {renderInline(row[ci] ?? "", `${keyBase}-r${ri}c${ci}`)}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  let out = "<table><thead><tr>";
+  for (let i = 0; i < header.length; i++) {
+    out += `<th${aligns[i]}>${renderInline(header[i])}</th>`;
+  }
+  out += "</tr></thead><tbody>";
+  for (const row of rows) {
+    out += "<tr>";
+    for (let i = 0; i < header.length; i++) {
+      out += `<td${aligns[i]}>${renderInline(row[i] ?? "")}</td>`;
+    }
+    out += "</tr>";
+  }
+  out += "</tbody></table>";
+  return out;
 }
 
-function renderList(lines: string[], start: number, ordered: boolean, keyBase: string) {
-  const items: React.ReactNode[] = [];
+/** 列表：两级嵌套，返回 HTML 与消费的行数。 */
+function renderList(lines: string[], start: number, ordered: boolean): { html: string; next: number } {
+  let html = "";
   let i = start;
-  let k = 0;
   while (i < lines.length) {
     const line = lines[i];
-    const match = ordered ? /^\s*(\d+)[.)]\s+(.*)$/.exec(line) : /^\s*[-*+]\s+(.*)$/.exec(line);
+    const match = ordered ? /^\s*(\d+)[.)]\s+(.*)$/.exec(line) : /^\s*([-*+])\s+(.*)$/.exec(line);
     if (match === null) break;
     const indent = /^\s*/.exec(line)?.[0].length ?? 0;
-    // 仅支持两级嵌套：收集更深的子行。
     const subLines: string[] = [];
     let j = i + 1;
     while (j < lines.length) {
       const subIndent = /^\s*/.exec(lines[j])?.[0].length ?? 0;
-      if (subIndent <= indent && !/^\s*$/.test(lines[j])) break;
+      if (subIndent <= indent && lines[j].trim() !== "") break;
       if (lines[j].trim() === "") {
         j += 1;
         continue;
@@ -107,26 +116,22 @@ function renderList(lines: string[], start: number, ordered: boolean, keyBase: s
       subLines.push(lines[j].replace(/^\s{0,4}/, ""));
       j += 1;
     }
-    const isSubList = /^\s*([-*+]|\d+[.)])\s+/.test(subLines[0] ?? "");
-    const sub = isSubList
-      ? renderList(subLines, 0, /^\s*\d+[.)]/.test(subLines[0]), `${keyBase}-sub${k}`).items
-      : null;
-    items.push(
-      <li key={k++}>
-        {renderInline(match[2], `${keyBase}-l${k}`)}
-        {sub}
-      </li>,
-    );
+    let sub = "";
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(subLines[0] ?? "")) {
+      const subOrdered = /^\s*\d+[.)]/.test(subLines[0]);
+      sub = renderList(subLines, 0, subOrdered).html;
+    }
+    html += `<li>${renderInline(match[2])}${sub}</li>`;
     i = j;
   }
-  return { items, next: i };
+  return { html: ordered ? `<ol>${html}</ol>` : `<ul>${html}</ul>`, next: i };
 }
 
-function renderBlocks(source: string): React.ReactNode[] {
+/** Markdown → 可编辑 HTML 字符串。 */
+export function markdownToHtml(source: string): string {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
-  const blocks: React.ReactNode[] = [];
+  const blocks: string[] = [];
   let i = 0;
-  let key = 0;
   while (i < lines.length) {
     const line = lines[i];
     if (line.trim() === "") {
@@ -142,23 +147,17 @@ function renderBlocks(source: string): React.ReactNode[] {
         i += 1;
       }
       i += 1;
-      blocks.push(
-        <pre key={key++}>
-          <code>{buf.join("\n")}</code>
-        </pre>,
-      );
+      blocks.push(`<pre><code>${escapeHtml(buf.join("\n"))}</code></pre>`);
       continue;
     }
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading !== null) {
-      const level = heading[1].length;
-      const children = renderInline(heading[2], `k${key}`);
-      blocks.push(React.createElement(`h${level}`, { key: key++ }, children));
+      blocks.push(`<h${heading[1].length}>${renderInline(heading[2])}</h${heading[1].length}>`);
       i += 1;
       continue;
     }
     if (/^\s*(---|\*\*\*|___)\s*$/.test(line)) {
-      blocks.push(<hr key={key++} />);
+      blocks.push("<hr/>");
       i += 1;
       continue;
     }
@@ -168,12 +167,11 @@ function renderBlocks(source: string): React.ReactNode[] {
         tableLines.push(lines[i]);
         i += 1;
       }
-      const table = renderTable(tableLines, `k${key}`);
-      if (table !== null) blocks.push(table);
+      const table = renderTable(tableLines);
+      if (table !== "") blocks.push(table);
       else {
-        // 无效表格：首行按段落处理，其余行回退到主循环。
         i -= tableLines.length - 1;
-        blocks.push(<p key={key++}>{renderInline(tableLines[0], `k${key}`)}</p>);
+        blocks.push(`<p>${renderInline(tableLines[0])}</p>`);
       }
       continue;
     }
@@ -187,20 +185,17 @@ function renderBlocks(source: string): React.ReactNode[] {
         buf.push(lines[i].trim() === "" ? "" : lines[i].replace(/^\s*>\s?/, ""));
         i += 1;
       }
-      blocks.push(
-        <blockquote key={key++}>{renderBlocks(buf.join("\n"))}</blockquote>,
-      );
+      blocks.push(`<blockquote>${markdownToHtml(buf.join("\n"))}</blockquote>`);
       continue;
     }
     const ordered = /^\s*\d+[.)]\s+/.test(line);
     const bullet = /^\s*[-*+]\s+/.test(line);
     if (ordered || bullet) {
-      const { items, next } = renderList(lines, i, ordered, `k${key}`);
-      blocks.push(ordered ? <ol key={key++}>{items}</ol> : <ul key={key++}>{items}</ul>);
-      i = next;
+      const result = renderList(lines, i, ordered);
+      blocks.push(result.html);
+      i = result.next;
       continue;
     }
-    // 段落：收集到空行或块级起始。
     const buf: string[] = [line];
     i += 1;
     while (
@@ -215,16 +210,165 @@ function renderBlocks(source: string): React.ReactNode[] {
       buf.push(lines[i]);
       i += 1;
     }
-    blocks.push(<p key={key++}>{renderInline(buf.join("\n").replace(/\n/g, " "), `k${key}`)}</p>);
+    blocks.push(`<p>${renderInline(buf.join("\n").replace(/\n/g, " "))}</p>`);
   }
-  return blocks;
+  return blocks.join("");
 }
 
-export interface MarkdownViewProps {
-  source: string;
+// ---------------------------------------------------------------------------
+// DOM → Markdown 序列化（markdownToHtml 的逆操作）
+// ---------------------------------------------------------------------------
+
+function textOf(node: Node): string {
+  return node.textContent ?? "";
 }
 
-/** 预览用 Markdown 视图。 */
-export function MarkdownView({ source }: MarkdownViewProps): React.ReactElement {
-  return <>{renderBlocks(source)}</>;
+/** 行内序列化：跳过返回按钮，链接还原为 [text](url)。 */
+function inlineToMd(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.nodeValue ?? "";
+  if (!(node instanceof Element)) return "";
+  const tag = node.tagName;
+  switch (tag) {
+    case "BR":
+      return "\n";
+    case "STRONG":
+      return `**${textOf(node)}**`;
+    case "EM":
+      return `*${textOf(node)}*`;
+    case "DEL":
+      return `~~${textOf(node)}~~`;
+    case "CODE":
+      return `\`${textOf(node)}\``;
+    case "A": {
+      const href = node.getAttribute("href") ?? node.getAttribute("data-href") ?? "";
+      return `[${textOf(node)}](${href})`;
+    }
+    case "BUTTON":
+      return ""; // 返回按钮不进入 Markdown
+    case "SPAN": {
+      if (node.classList.contains("dshui-link-wrap")) {
+        const anchor = node.querySelector("a.dshui-link");
+        const href = anchor?.getAttribute("data-href") ?? "";
+        return `[${textOf(anchor ?? node)}](${href})`;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  let out = "";
+  for (const child of Array.from(node.childNodes)) out += inlineToMd(child);
+  return out;
+}
+
+/** 块级序列化。 */
+function blockToMd(el: Element): string {
+  const tag = el.tagName;
+  switch (tag) {
+    case "P":
+      return inlineToMd(el).trim();
+    case "H1":
+    case "H2":
+    case "H3":
+    case "H4":
+    case "H5":
+    case "H6": {
+      const level = Number(tag[1]);
+      return `${"#".repeat(level)} ${inlineToMd(el).trim()}`;
+    }
+    case "UL":
+    case "OL":
+      return listToMd(el, tag === "OL");
+    case "BLOCKQUOTE": {
+      const inner = Array.from(el.childNodes)
+        .map((child) => (child instanceof Element ? blockToMd(child) : ""))
+        .filter((s) => s !== "")
+        .join("\n");
+      return inner
+        .split("\n")
+        .map((l) => `> ${l}`)
+        .join("\n");
+    }
+    case "PRE": {
+      const code = el.querySelector("code") ?? el;
+      return "```\n" + textOf(code).replace(/\n$/, "") + "\n```";
+    }
+    case "HR":
+      return "---";
+    case "TABLE":
+      return tableToMd(el);
+    case "DIV":
+    case "SECTION":
+    case "SPAN": {
+      // 浏览器编辑可能产生裸 DIV：按段落处理其行内内容。
+      const parts: string[] = [];
+      for (const child of Array.from(el.childNodes)) {
+        if (child instanceof Element) parts.push(blockToMd(child));
+        else if (child.nodeType === Node.TEXT_NODE && (child.nodeValue ?? "").trim() !== "") {
+          parts.push((child.nodeValue ?? "").trim());
+        }
+      }
+      return parts.filter((s) => s !== "").join("\n\n");
+    }
+    default:
+      return inlineToMd(el).trim();
+  }
+}
+
+function listToMd(el: Element, ordered: boolean): string {
+  const items: string[] = [];
+  let n = 0;
+  for (const li of Array.from(el.querySelectorAll(":scope > li"))) {
+    n += 1;
+    const inner: string[] = [];
+    let childList = "";
+    for (const child of Array.from(li.childNodes)) {
+      if (child instanceof Element && (child.tagName === "UL" || child.tagName === "OL")) {
+        childList = listToMd(child, child.tagName === "OL");
+      } else {
+        const part = child instanceof Element ? blockToMd(child) : (child.nodeValue ?? "");
+        if (part.trim() !== "") inner.push(part.trim());
+      }
+    }
+    const line = `${ordered ? `${n}.` : "-"} ${inner.join(" ")}`;
+    items.push(line);
+    if (childList !== "") {
+      for (const sub of childList.split("\n")) items.push(`  ${sub}`);
+    }
+  }
+  return items.join("\n");
+}
+
+function tableToMd(el: Element): string {
+  const rows: string[] = [];
+  const trs = Array.from(el.querySelectorAll("tr"));
+  if (trs.length === 0) return "";
+  const rowOf = (tr: Element): string[] => {
+    const cells: string[] = [];
+    for (const cell of Array.from(tr.children)) {
+      cells.push(inlineToMd(cell).replace(/\|/g, "\\|").trim());
+    }
+    return cells;
+  };
+  const header = rowOf(trs[0]);
+  rows.push(`| ${header.join(" | ")} |`);
+  rows.push(`| ${header.map(() => "---").join(" | ")} |`);
+  for (const tr of trs.slice(1)) {
+    rows.push(`| ${rowOf(tr).join(" | ")} |`);
+  }
+  return rows.join("\n");
+}
+
+/** contentEditable DOM → Markdown 源码。 */
+export function serializeToMarkdown(root: Element): string {
+  const parts: string[] = [];
+  for (const child of Array.from(root.childNodes)) {
+    if (child instanceof Element) {
+      const md = blockToMd(child).trim();
+      if (md !== "") parts.push(md);
+    } else if (child.nodeType === Node.TEXT_NODE && (child.nodeValue ?? "").trim() !== "") {
+      parts.push((child.nodeValue ?? "").trim());
+    }
+  }
+  return parts.join("\n\n") + (parts.length > 0 ? "\n" : "");
 }

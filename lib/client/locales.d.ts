@@ -44,7 +44,7 @@ export declare const zh: {
     readonly "note.saved": "已保存";
     readonly "note.view.preview": "预览";
     readonly "note.view.edit": "编辑";
-    readonly "note.body.placeholder": "继续在笔记里写点什么…（支持 Markdown；输入 @ 可唤起小鲸鱼）";
+    readonly "note.body.placeholder": "点这里开始写，或从聊天里划选存为剪藏…（输入 @ 唤起小鲸鱼）";
     readonly "note.preview.empty": "（空笔记）";
     readonly "note.hint": "输入 @ 或点按钮，让 dsh 用这篇笔记工作";
     readonly "note.save": "保存";
@@ -102,7 +102,7 @@ export declare const en: {
     readonly "note.saved": "Saved";
     readonly "note.view.preview": "Preview";
     readonly "note.view.edit": "Edit";
-    readonly "note.body.placeholder": "Keep writing… (Markdown; type @ to summon the whale)";
+    readonly "note.body.placeholder": "Click to write, or clip text from a chat… (type @ to summon the whale)";
     readonly "note.preview.empty": "(empty note)";
     readonly "note.hint": "Type @ or use the buttons to let dsh work with this note";
     readonly "note.save": "Save";
