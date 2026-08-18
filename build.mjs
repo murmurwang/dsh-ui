@@ -54,7 +54,7 @@ const hostBuild = {
   outfile: "lib/index.js",
   format: "esm",
   platform: "node",
-  external: ["@deepseek-ai/*", "zod"],
+  external: ["@deepseek-ai/*", "zod", "pdf-parse"],
   sourcemap: true,
 };
 
@@ -65,7 +65,7 @@ const typertBuild = {
   outfile: "lib/typert.js",
   format: "esm",
   platform: "node",
-  external: ["@deepseek-ai/*", "zod"],
+  external: ["@deepseek-ai/*", "zod", "pdf-parse"],
   sourcemap: true,
 };
 
