@@ -57,11 +57,13 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
     setMenuId(null);
     const item = itemOf(noteId);
     if (item === undefined) return;
+    // 延迟一拍再开弹窗：菜单 portal 卸载时，WebKit 会把点击重定向到
+    // 指针下方新出现的 Modal 遮罩（onClick=onClose），导致弹窗闪退。
     if (id === "rename") {
       setRenameValue(item.title);
-      setRenameTarget({ id: noteId, title: item.title });
+      window.setTimeout(() => setRenameTarget({ id: noteId, title: item.title }), 0);
     } else if (id === "delete") {
-      setDeleteTarget({ id: noteId, title: item.title });
+      window.setTimeout(() => setDeleteTarget({ id: noteId, title: item.title }), 0);
     }
   };
 
@@ -153,7 +155,14 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
         <input
           className="dshui-note-rename-input"
           value={renameValue}
-          autoFocus
+          ref={(el) => {
+            if (el !== null) {
+              window.setTimeout(() => {
+                el.focus();
+                el.select();
+              }, 50);
+            }
+          }}
           placeholder={t("note.title.placeholder")}
           onChange={(ev) => setRenameValue(ev.target.value)}
           onKeyDown={(ev) => {
