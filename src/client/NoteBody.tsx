@@ -238,6 +238,8 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
   };
 
 
+  const downPosRef = React.useRef<{ x: number; y: number } | null>(null);
+
   const onClick = (ev: React.MouseEvent<HTMLDivElement>) => {
     const target = ev.target as HTMLElement;
     const back = target.closest<HTMLButtonElement>(".dshui-link-back");
@@ -248,20 +250,14 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       if (sessionId !== null && sessionId !== "") onSessionLink(sessionId);
       return;
     }
-  };
-
-  const onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
-    const target = ev.target as HTMLElement;
-    // 返回按钮按下不移动光标（按钮 contenteditable=false 但仍会夺焦）。
-    if (target.closest(".dshui-link-back") !== null) {
-      ev.preventDefault();
-      return;
-    }
-    // WebKit 对 contentEditable 内无 href 的 <a> 放置光标不可靠：
-    // 手动把光标放到点击位置（保证链接中间可输入）。
+    // 单击回链（非拖选）：手动放置光标 —— WebKit 对无 href 的 <a> 放光标不可靠。
     const anchor = target.closest<HTMLAnchorElement>("a.dshui-link");
     if (anchor === null) return;
-    ev.preventDefault();
+    const down = downPosRef.current;
+    const moved =
+      down !== null &&
+      (Math.abs(ev.clientX - down.x) > 4 || Math.abs(ev.clientY - down.y) > 4);
+    if (moved) return; // 拖选，交给原生行为
     const sel = window.getSelection();
     const el = ref.current;
     if (sel === null || el === null) return;
@@ -272,12 +268,19 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       sel.addRange(pointCaret);
       return;
     }
-    // 回退：光标放到链接末尾。
     const range = document.createRange();
     range.selectNodeContents(anchor);
     range.collapse(false);
     sel.removeAllRanges();
     sel.addRange(range);
+  };
+
+  const onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
+    downPosRef.current = { x: ev.clientX, y: ev.clientY };
+    const target = ev.target as HTMLElement;
+    // 返回按钮按下不移动光标（按钮 contenteditable=false 但仍会夺焦）。
+    // 链接本体不拦截按下：保留原生拖选。
+    if (target.closest(".dshui-link-back") !== null) ev.preventDefault();
   };
 
   const onKeyUp = () => {
