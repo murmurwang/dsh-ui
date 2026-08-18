@@ -10,7 +10,8 @@ import { NOTES_DESCRIPTORS } from "../notes/wire";
  */
 
 export interface NotesRemoteFace {
-  list(): Promise<RpcResult<{ items: NoteListItem[] }, never>>;
+  /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。 */
+  list(request?: Record<string, never>): Promise<RpcResult<{ items: NoteListItem[] }, never>>;
   get(input: { id: string }): Promise<RpcResult<{ note: Note }, NotesError>>;
   create(input: { title?: string }): Promise<RpcResult<{ note: Note }, NotesError>>;
   update(input: {
@@ -133,7 +134,7 @@ export class NotesController {
   async refresh(): Promise<void> {
     const remote = this.remote;
     if (remote === null) return;
-    const result = await remote.list();
+    const result = await remote.list({});
     if (result.ok) {
       this.publish({ phase: "ready", items: result.value.items, listError: null });
       // 打开中的笔记若已被删除，关闭编辑。

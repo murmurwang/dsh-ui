@@ -16,7 +16,7 @@ export class NotesService extends TypertRemoteService {
   }
 
   @Remote("list")
-  list(): ReturnType<NotesStore["list"]> {
+  list(_request: Record<string, never> = {}): ReturnType<NotesStore["list"]> {
     return this.store.list();
   }
 

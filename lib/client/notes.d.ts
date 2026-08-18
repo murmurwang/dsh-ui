@@ -6,7 +6,8 @@ import type { Note, NoteClip, NoteListItem, NotesError, RpcResult } from "../not
  * 剪藏 / 轮询（agent 写回后自动刷新）。
  */
 export interface NotesRemoteFace {
-    list(): Promise<RpcResult<{
+    /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。 */
+    list(request?: Record<string, never>): Promise<RpcResult<{
         items: NoteListItem[];
     }, never>>;
     get(input: {

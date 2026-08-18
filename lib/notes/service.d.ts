@@ -9,7 +9,7 @@ export declare class NotesService extends TypertRemoteService {
     /** 存储实例由 apply 注入，与 agent 工具共享。 */
     readonly store: NotesStore;
     constructor(ctx: Context, store: NotesStore);
-    list(): ReturnType<NotesStore["list"]>;
+    list(_request?: Record<string, never>): ReturnType<NotesStore["list"]>;
     get(request: {
         id: string;
     }): ReturnType<NotesStore["get"]>;
