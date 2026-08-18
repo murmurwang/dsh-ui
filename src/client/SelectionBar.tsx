@@ -47,9 +47,11 @@ export function SelectionBar({
   const [clipping, setClipping] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const notesState = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot);
+  const notesState = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
 
-  const update = React.useCallback((next: SelectionSnapshot | null) => {
+  /** 锁存最近一次有效选区：选区被浏览器/应用清掉后浮窗仍保持。 */
+  const latch = React.useCallback((next: SelectionSnapshot | null) => {
+    if (next === null) return; // 选区消失不关闭（latch 语义）
     snapRef.current = next;
     setSnap(next);
     setError(null);
@@ -60,28 +62,26 @@ export function SelectionBar({
   /** 关闭浮窗；`clearSelection` 为 true 时顺带清掉选区。 */
   const close = React.useCallback(
     (clearSelection: boolean) => {
-      update(null);
+      snapRef.current = null;
+      setSnap(null);
       setPos(null);
       setClipping(false);
       if (clearSelection) window.getSelection()?.removeAllRanges();
     },
-    [update],
+    [],
   );
 
-  // 划选监听。
+  // 划选监听：出现有效选区就锁存并展示；选区消失不关闭。
   React.useEffect(() => {
     return watchSelection(
       (next) => {
-        if (next === null || !hasSession()) {
-          update(null);
-          setPos(null);
-          return;
-        }
-        update(next);
+        if (next === null || !hasSession()) return;
+        latch(next);
       },
       () => popRef.current,
+      isInsideChatArea,
     );
-  }, [hasSession, update]);
+  }, [hasSession, latch]);
 
   // 依据选区包围盒与浮窗实际尺寸计算停靠位置。
   React.useLayoutEffect(() => {

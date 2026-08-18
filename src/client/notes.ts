@@ -10,7 +10,8 @@ import { NOTES_DESCRIPTORS } from "../notes/wire";
  */
 
 export interface NotesRemoteFace {
-  /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。 */
+  /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。
+   *  返回值已拆掉 RPC 传输信封（外层 {ok, value}），直接是业务结果。 */
   list(request?: Record<string, never>): Promise<RpcResult<{ items: NoteListItem[] }, never>>;
   get(input: { id: string }): Promise<RpcResult<{ note: Note }, NotesError>>;
   create(input: { title?: string }): Promise<RpcResult<{ note: Note }, NotesError>>;
@@ -25,6 +26,23 @@ export interface NotesRemoteFace {
   delete(input: { id: string }): Promise<RpcResult<{ ok?: true; absent?: true }, NotesError>>;
 }
 
+/** 传输失败映射为业务错误（外层 RPC 信封携带 error）。 */
+const TRANSPORT_ERROR: NotesError = {
+  code: "invalid-argument",
+  message: "notes transport failure",
+};
+
+/**
+ * 拆传输信封：wire 返回外层 RpcResult（transport），其 value 是
+ * 业务 RpcResult（我们声明在 typert 清单里的结果 schema）。
+ */
+async function unwrap<R extends { ok: boolean }>(
+  carried: Promise<RpcResult<R, never>>,
+): Promise<R> {
+  const rpc = await carried;
+  return rpc.ok ? rpc.value : ({ ok: false, error: TRANSPORT_ERROR } as unknown as R);
+}
+
 /** $mount 客户端远程贡献；返回卸载函数。 */
 export function mountNotesRemote(ctx: ClientContext): Promise<() => void> {
   const contribution = {
@@ -32,6 +50,23 @@ export function mountNotesRemote(ctx: ClientContext): Promise<() => void> {
     descriptors: NOTES_DESCRIPTORS,
   };
   return ctx.remote.$mount(contribution);
+}
+
+/** 把 ctx.get 拿到的命名空间服务包装成拆信封后的业务面。 */
+export function notesFaceOf(ns: {
+  list(request?: Record<string, never>): Promise<RpcResult<RpcResult<{ items: NoteListItem[] }, never>, never>>;
+  get(input: { id: string }): Promise<RpcResult<RpcResult<{ note: Note }, NotesError>, never>>;
+  create(input: { title?: string }): Promise<RpcResult<RpcResult<{ note: Note }, NotesError>, never>>;
+  update(input: unknown): Promise<RpcResult<RpcResult<{ note: Note }, NotesError>, never>>;
+  delete(input: { id: string }): Promise<RpcResult<RpcResult<{ ok?: true; absent?: true }, NotesError>, never>>;
+}): NotesRemoteFace {
+  return {
+    list: (request) => unwrap(ns.list(request)),
+    get: (input) => unwrap(ns.get(input)),
+    create: (input) => unwrap(ns.create(input)),
+    update: (input) => unwrap(ns.update(input)),
+    delete: (input) => unwrap(ns.delete(input)),
+  };
 }
 
 export interface NotesSnapshot {

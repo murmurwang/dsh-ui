@@ -228,7 +228,7 @@ function WorkspacesTab({
 }
 
 function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
-  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot);
+  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
   const onCreate = () => {
     void notes.create("").then((note) => {
       if (note !== null) void notes.open(note.id);

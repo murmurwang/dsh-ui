@@ -11,7 +11,7 @@ import { SelectionBar } from "./SelectionBar";
 import { SidebarRegion } from "./SidebarRegion";
 import { NoteEditor } from "./NoteEditor";
 import { Toast } from "./Toast";
-import { NotesController, mountNotesRemote, type NotesRemoteFace } from "./notes";
+import { NotesController, mountNotesRemote, notesFaceOf } from "./notes";
 import { en, zh, NS } from "./locales";
 import { quoteBlock } from "./quote";
 
@@ -253,10 +253,11 @@ export function apply(ctx: ClientContext): void {
           return;
         }
         unmount = dispose;
-        const face = ctx.get("remote.notes") as NotesRemoteFace | undefined;
-        if (face === undefined) {
+        const ns = ctx.get("remote.notes") as Parameters<typeof notesFaceOf>[0] | undefined;
+        if (ns === undefined) {
           throw new Error("remote.notes namespace was not provided after mount");
         }
+        const face = notesFaceOf(ns);
         await notes.attach(face);
       })
       .catch((err: unknown) => {

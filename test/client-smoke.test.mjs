@@ -126,7 +126,8 @@ function makeCtx() {
     create: async () => ({}),
   };
 
-  const notesFace = {
+  // 业务信封（返回给拆信封后的 face）
+  const business = {
     list: async () => ({ ok: true, value: { items: [makeNote()] } }),
     get: async ({ id }) =>
       id === "n1" ? { ok: true, value: { note: makeNote() } } : { ok: false, error: { code: "not-found", id } },
@@ -136,6 +137,14 @@ function makeCtx() {
       return { ok: true, value: { note: makeNote({ version: "2" }) } };
     },
     delete: async () => ({ ok: true, value: { ok: true } }),
+  };
+  // 传输信封包业务信封（wire 真身是两层）
+  const notesFace = {
+    list: async (req) => ({ ok: true, value: await business.list(req) }),
+    get: async (req) => ({ ok: true, value: await business.get(req) }),
+    create: async (req) => ({ ok: true, value: await business.create(req) }),
+    update: async (req) => ({ ok: true, value: await business.update(req) }),
+    delete: async (req) => ({ ok: true, value: await business.delete(req) }),
   };
 
   const remote = {

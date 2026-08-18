@@ -6,7 +6,8 @@ import type { Note, NoteClip, NoteListItem, NotesError, RpcResult } from "../not
  * 剪藏 / 轮询（agent 写回后自动刷新）。
  */
 export interface NotesRemoteFace {
-    /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。 */
+    /** wire 契约：每个调用带恰好一个 request 参数对象（list 为 {}）。
+     *  返回值已拆掉 RPC 传输信封（外层 {ok, value}），直接是业务结果。 */
     list(request?: Record<string, never>): Promise<RpcResult<{
         items: NoteListItem[];
     }, never>>;
@@ -43,6 +44,31 @@ export interface NotesRemoteFace {
 }
 /** $mount 客户端远程贡献；返回卸载函数。 */
 export declare function mountNotesRemote(ctx: ClientContext): Promise<() => void>;
+/** 把 ctx.get 拿到的命名空间服务包装成拆信封后的业务面。 */
+export declare function notesFaceOf(ns: {
+    list(request?: Record<string, never>): Promise<RpcResult<RpcResult<{
+        items: NoteListItem[];
+    }, never>, never>>;
+    get(input: {
+        id: string;
+    }): Promise<RpcResult<RpcResult<{
+        note: Note;
+    }, NotesError>, never>>;
+    create(input: {
+        title?: string;
+    }): Promise<RpcResult<RpcResult<{
+        note: Note;
+    }, NotesError>, never>>;
+    update(input: unknown): Promise<RpcResult<RpcResult<{
+        note: Note;
+    }, NotesError>, never>>;
+    delete(input: {
+        id: string;
+    }): Promise<RpcResult<RpcResult<{
+        ok?: true;
+        absent?: true;
+    }, NotesError>, never>>;
+}): NotesRemoteFace;
 export interface NotesSnapshot {
     phase: "boot" | "ready" | "error";
     items: NoteListItem[];

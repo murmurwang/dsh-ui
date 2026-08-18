@@ -49,7 +49,7 @@ function workTemplate(open: { title: string; id: string }): string {
 /** 全屏笔记编辑器（覆盖在会话区之上）。 */
 export function NoteEditor(props: NoteEditorProps) {
   const { t, notes } = props;
-  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot);
+  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
   const [title, setTitle] = React.useState("");
   const [body, setBody] = React.useState("");
   const [savedTitle, setSavedTitle] = React.useState("");

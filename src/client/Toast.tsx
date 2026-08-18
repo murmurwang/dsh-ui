@@ -10,7 +10,7 @@ export interface ToastProps {
 
 /** 底部轻提示：订阅控制器 toast 状态，自动淡出。 */
 export function Toast({ notes }: ToastProps) {
-  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot);
+  const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
   const toast = state.toast;
   if (toast === null) return null;
   return (
