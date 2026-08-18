@@ -364,7 +364,43 @@ export class NotesController {
   async removeNote(id: string): Promise<void> {
     await this.face().delete({ id });
     if (this.state.openId === id) this.close();
+    if (this.state.lastOpenNoteId === id) {
+      this.publish({ lastOpenNoteId: null });
+      try {
+        localStorage.removeItem(LAST_OPEN_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
     await this.refresh();
+  }
+
+  /** 重命名（乐观并发；打开的笔记同步视图）。 */
+  async renameNote(id: string, title: string): Promise<boolean> {
+    try {
+      const target = await this.face().get({ id });
+      if (!target.ok) {
+        this.notifyToast("笔记不存在");
+        return false;
+      }
+      const result = await this.face().update({
+        id,
+        ifVersion: target.value.note.version,
+        title,
+      });
+      if (!result.ok) {
+        this.notifyToast("重命名失败（笔记可能已被修改）");
+        return false;
+      }
+      if (this.state.openId === id) {
+        this.publish({ openNote: result.value.note });
+      }
+      await this.refresh();
+      return true;
+    } catch {
+      this.notifyToast("重命名失败（网络）");
+      return false;
+    }
   }
 
   /** 供剪藏选择器用：按最近更新排序的前若干条。 */

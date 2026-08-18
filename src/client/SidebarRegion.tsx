@@ -1,5 +1,13 @@
 import * as React from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
+import {
+  Button,
+  IconEditOutline16,
+  IconEllipsisOutline16,
+  IconTrashOutline16,
+  Menu,
+  Modal,
+} from "@deepseek-ai/dsh-client-ui-primitives";
 import type { NotesController } from "./notes";
 import { NS } from "./locales";
 
@@ -31,11 +39,50 @@ function readTab(): Tab {
 
 function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
   const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
+  const [menuId, setMenuId] = React.useState<string | null>(null);
+  const [renameTarget, setRenameTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; title: string } | null>(null);
+  const [renameValue, setRenameValue] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+
   const onCreate = () => {
     void notes.create("").then((note) => {
       if (note !== null) void notes.open(note.id);
     });
   };
+
+  const itemOf = (id: string) => state.items.find((i) => i.id === id);
+
+  const handleSelect = (id: string, noteId: string) => {
+    setMenuId(null);
+    const item = itemOf(noteId);
+    if (item === undefined) return;
+    if (id === "rename") {
+      setRenameValue(item.title);
+      setRenameTarget({ id: noteId, title: item.title });
+    } else if (id === "delete") {
+      setDeleteTarget({ id: noteId, title: item.title });
+    }
+  };
+
+  const submitRename = () => {
+    if (renameTarget === null || renameValue.trim() === "") return;
+    setBusy(true);
+    void notes.renameNote(renameTarget.id, renameValue.trim()).finally(() => {
+      setBusy(false);
+      setRenameTarget(null);
+    });
+  };
+
+  const confirmDelete = () => {
+    if (deleteTarget === null) return;
+    setBusy(true);
+    void notes.removeNote(deleteTarget.id).finally(() => {
+      setBusy(false);
+      setDeleteTarget(null);
+    });
+  };
+
   return (
     <div className="dshui-side-pane">
       <div className="dshui-side-add" role="button" tabIndex={0} onClick={onCreate}>
@@ -46,18 +93,96 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
         <div className="dshui-side-empty">{t("notes.empty")}</div>
       ) : null}
       {state.items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          className={
-            state.openId === item.id ? "dshui-side-row dshui-side-row-current" : "dshui-side-row"
-          }
-          onClick={() => void notes.open(item.id)}
-        >
-          <span className="dshui-side-row-title">{item.title}</span>
-          {item.clipCount > 0 ? <span className="dshui-side-meta">{item.clipCount}</span> : null}
-        </button>
+        <div key={item.id} className="dshui-side-row-wrap">
+          <button
+            type="button"
+            className={
+              state.openId === item.id ? "dshui-side-row dshui-side-row-current" : "dshui-side-row"
+            }
+            onClick={() => void notes.open(item.id)}
+          >
+            <span className="dshui-side-row-title">{item.title}</span>
+            {item.clipCount > 0 ? <span className="dshui-side-meta">{item.clipCount}</span> : null}
+          </button>
+          <span className="dshui-side-row-actions">
+            <Menu
+              open={menuId === item.id}
+              onClose={() => setMenuId(null)}
+              items={[
+                { id: "rename", label: t("note.menu.rename"), icon: <IconEditOutline16 /> },
+                { id: "delete", label: t("note.menu.delete"), icon: <IconTrashOutline16 />, danger: true },
+              ]}
+              onSelect={(id) => handleSelect(id, item.id)}
+              portal
+              closeOnPointerLeave
+              anchor={(
+                <button
+                  type="button"
+                  className="dshui-side-icon-btn"
+                  aria-label={t("note.menu.aria", { name: item.title })}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setMenuId((v) => (v === item.id ? null : item.id));
+                  }}
+                >
+                  <IconEllipsisOutline16 />
+                </button>
+              )}
+            />
+          </span>
+        </div>
       ))}
+
+      {/* 重命名弹窗 */}
+      <Modal
+        open={renameTarget !== null}
+        onClose={() => setRenameTarget(null)}
+        closeLabel={t("cancel")}
+        title={t("note.rename.title")}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setRenameTarget(null)} disabled={busy}>
+              {t("cancel")}
+            </Button>
+            <Button variant="primary" onClick={submitRename} disabled={busy || renameValue.trim() === ""}>
+              {t("confirm")}
+            </Button>
+          </>
+        )}
+      >
+        <input
+          className="dshui-note-rename-input"
+          value={renameValue}
+          autoFocus
+          placeholder={t("note.title.placeholder")}
+          onChange={(ev) => setRenameValue(ev.target.value)}
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") submitRename();
+          }}
+        />
+      </Modal>
+
+      {/* 删除确认弹窗 */}
+      <Modal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        closeLabel={t("cancel")}
+        title={t("note.delete.title")}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={busy}>
+              {t("cancel")}
+            </Button>
+            <Button variant="primary" className="dshui-danger" onClick={confirmDelete} disabled={busy}>
+              {busy ? t("note.delete.pending") : t("confirm")}
+            </Button>
+          </>
+        )}
+      >
+        <div className="dshui-note-delete-desc" role="alert">
+          {t("note.delete.desc", { name: deleteTarget?.title ?? "" })}
+        </div>
+      </Modal>
     </div>
   );
 }

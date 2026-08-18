@@ -130,6 +130,8 @@ export declare class NotesController {
      */
     addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean>;
     removeNote(id: string): Promise<void>;
+    /** 重命名（乐观并发；打开的笔记同步视图）。 */
+    renameNote(id: string, title: string): Promise<boolean>;
     /** 供剪藏选择器用：按最近更新排序的前若干条。 */
     recentItems(limit?: number): NoteListItem[];
 }

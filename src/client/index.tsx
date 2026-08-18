@@ -54,6 +54,15 @@ const css = `
 .dshui-side-row-current{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3);color:var(--dsw-static-deepseek-500,#4d6bfe)}
 .dshui-side-row-title{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .dshui-side-meta{color:var(--dsw-alias-label-caption,#8a919f);font-size:11px}
+.dshui-side-row-wrap{display:flex;align-items:center;position:relative}
+.dshui-side-row-wrap>.dshui-side-row{flex:1;min-width:0}
+.dshui-side-row-actions{display:none;flex:none}
+.dshui-side-row-wrap:hover .dshui-side-row-actions{display:inline-flex}
+.dshui-side-icon-btn{display:inline-flex;border:none;background:transparent;color:var(--dsw-alias-label-tertiary,#8a919f);cursor:pointer;padding:2px;border-radius:4px}
+.dshui-side-icon-btn:hover{color:var(--dsw-alias-label-primary,#1f2329);background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3)}
+.dshui-note-rename-input{box-sizing:border-box;border:1px solid var(--dsw-alias-border-l2,#e2e4e9);width:100%;height:36px;color:var(--dsw-alias-label-primary,#1f2329);background:transparent;border-radius:8px;outline:none;padding:6px 10px;font-size:14px}
+.dshui-note-delete-desc{color:var(--dsw-alias-label-secondary,#4e5969);font-size:13px;line-height:20px}
+.dshui-danger{background:var(--dsw-alias-state-error-primary,#d03050)}
 .dshui-side-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#8a919f);font-size:12px;line-height:18px}
 /* 笔记编辑器 */
 .dshui-note-shell{position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);font-family:var(--dsw-font-family,system-ui)}

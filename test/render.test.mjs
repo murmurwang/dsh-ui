@@ -22,11 +22,18 @@ writeFileSync(
   stub,
   `const React = require("react");
    const icon = (name) => (props) => React.createElement("span", { "data-icon": name, ...props });
+   const passthrough = (name) => (props) => React.createElement("span", { "data-cmp": name, ...props }, props.children ?? null);
    module.exports = {
      IconFolderOpen16: icon("folder-open"),
      IconFolderClose16: icon("folder-close"),
      IconPlusOutline16: icon("plus"),
      IconTriangleRightFill14: icon("chev"),
+     IconEditOutline16: icon("edit"),
+     IconEllipsisOutline16: icon("ellipsis"),
+     IconTrashOutline16: icon("trash"),
+     Button: passthrough("button"),
+     Menu: passthrough("menu"),
+     Modal: passthrough("modal"),
    };
   `,
 );
