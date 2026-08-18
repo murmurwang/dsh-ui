@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 import type { NotesController } from "./notes";
+import type { FilesController } from "./files";
 import { NS } from "./locales";
 export interface SidebarRegionProps {
     /** SidebarRoot 传入的 owner props。 */
@@ -15,6 +16,7 @@ export interface SidebarRegionProps {
     }) => React.ReactNode;
     /** inject 注入的业务面。 */
     notes: NotesController;
+    files: FilesController;
     openSession: (sessionId: string) => void;
 }
 /** 侧栏工作区座位的新占有者：工作区 / 笔记 / 文件 三分栏。

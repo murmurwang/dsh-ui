@@ -19,7 +19,7 @@ test("TYPERT 清单形状与 codec 校验", async () => {
   assert.equal(TYPERT.face, "host");
   assert.ok(Array.isArray(TYPERT.schemas));
   assert.ok(Array.isArray(TYPERT.invocations));
-  assert.equal(TYPERT.invocations.length, 5);
+  assert.equal(TYPERT.invocations.length, 10);
   const model = TYPERT.model;
   assert.ok(model && Array.isArray(model.services) && Array.isArray(model.events) && Array.isArray(model.objects));
   const service = model.services.find((s) => s.key === "notes");
@@ -27,13 +27,17 @@ test("TYPERT 清单形状与 codec 校验", async () => {
   assert.equal(service.exportName, "NotesService");
   assert.ok(Array.isArray(service.members) && service.members.length === 5);
   assert.ok(service.members.every((m) => typeof m.name === "string" && typeof m.signature === "string" && m.kind === "method"));
+  const filesService = model.services.find((s) => s.key === "files");
+  assert.ok(filesService, "model.services 应包含 files 服务");
+  assert.equal(filesService.exportName, "FilesService");
+  assert.ok(Array.isArray(filesService.members) && filesService.members.length === 5);
   assert.ok(Array.isArray(service.types) && service.types.length > 0);
   assert.ok(service.types.every((t) => typeof t.name === "string" && typeof t.declaration === "string"));
 
   const methods = new Set();
   for (const inv of TYPERT.invocations) {
-    assert.equal(inv.service, "notes");
-    assert.equal(inv.namespace, "notes");
+    assert.ok(inv.service === "notes" || inv.service === "files");
+    assert.equal(inv.namespace, inv.service);
     assert.equal(inv.invocation.kind, "direct");
     assert.equal(inv.parameters.length, 1);
     const p = inv.parameters[0];
@@ -49,7 +53,7 @@ test("TYPERT 清单形状与 codec 校验", async () => {
   }
   assert.deepEqual(
     [...methods].sort(),
-    ["create", "delete", "get", "list", "update"],
+    ["create", "delete", "get", "getBytes", "list", "update", "upload"],
   );
 });
 

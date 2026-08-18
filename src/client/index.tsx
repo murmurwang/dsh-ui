@@ -11,7 +11,9 @@ import { SelectionBar } from "./SelectionBar";
 import { SidebarRegion } from "./SidebarRegion";
 import { NoteEditor } from "./NoteEditor";
 import { Toast } from "./Toast";
-import { NotesController, mountNotesRemote, notesFaceOf } from "./notes";
+import { NotesController, notesFaceOf } from "./notes";
+import { FilesController, filesFaceOf, mountDshUiRemotes } from "./files";
+import { FileView } from "./FileView";
 import { en, zh, NS } from "./locales";
 import { quoteBlock } from "./quote";
 // 官方 ui-workspace 照搬
@@ -65,6 +67,11 @@ const css = `
 .dshui-note-rename-error{color:var(--dsw-alias-state-error-primary,#d03050);margin-top:8px;font-size:12px;line-height:18px}
 .dshui-note-delete-desc{color:var(--dsw-alias-label-secondary,#4e5969);font-size:13px;line-height:20px}
 .dshui-danger{background:var(--dsw-alias-state-error-primary,#d03050)}
+.dshui-file-shell{position:fixed;top:0;bottom:0;z-index:900;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);font-family:var(--dsw-font-family,system-ui);box-shadow:-1px 0 0 var(--dsw-alias-border-l1,#e5e6eb)}
+.dshui-file-title{flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--dsw-alias-label-primary,#1f2329);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.dshui-file-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.dshui-file-frame{flex:1;border:none;width:100%}
+.dshui-file-text{flex:1;min-height:0;overflow-y:auto;padding:16px;max-width:860px;width:100%;margin:0 auto;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:22px;color:var(--dsw-alias-label-primary,#1f2329);user-select:text}
 .dshui-side-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#8a919f);font-size:12px;line-height:18px}
 /* 笔记编辑器 */
 .dshui-note-shell{position:fixed;top:0;bottom:0;z-index:900;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);font-family:var(--dsw-font-family,system-ui);box-shadow:-1px 0 0 var(--dsw-alias-border-l1,#e5e6eb)}
@@ -250,15 +257,15 @@ export function apply(ctx: ClientContext): void {
   // —— 功能二：笔记 ——
 
   const notes = new NotesController();
+  const files = new FilesController();
 
-  // 挂载 notes 远程贡献（Typert gateway → host NotesService）。
-  // 命名空间服务由 gateway 以动态 fiber 提供为 "remote.notes"；
-  // 通过 ctx.get（隔离层读取，无 inject 要求）取得 face —— 与官方
-  // “挂载者与消费者分离”的模式对齐（本插件两者一体，不能自注入）。
+  // 挂载远程贡献（notes + files，Typert gateway → host Services）。
+  // 命名空间服务由 gateway 以动态 fiber 提供为 "remote.notes"/"remote.files"；
+  // 通过 ctx.get（隔离层读取，无 inject 要求）取得 face。
   ctx.effect(() => {
     let disposed = false;
     let unmount: (() => void) | null = null;
-    void mountNotesRemote(ctx)
+    void mountDshUiRemotes(ctx)
       .then(async (dispose) => {
         if (disposed) {
           await dispose();
@@ -266,23 +273,25 @@ export function apply(ctx: ClientContext): void {
         }
         unmount = dispose;
         const ns = ctx.get("remote.notes") as Parameters<typeof notesFaceOf>[0] | undefined;
-        if (ns === undefined) {
-          throw new Error("remote.notes namespace was not provided after mount");
+        const fs = ctx.get("remote.files") as Parameters<typeof filesFaceOf>[0] | undefined;
+        if (ns === undefined || fs === undefined) {
+          throw new Error("remote namespaces were not provided after mount");
         }
-        const face = notesFaceOf(ns);
-        await notes.attach(face);
+        await notes.attach(notesFaceOf(ns));
+        await files.attach(filesFaceOf(fs));
       })
       .catch((err: unknown) => {
-        console.error("[dsh-ui] notes remote mount failed:", err);
+        console.error("[dsh-ui] remote mount failed:", err);
         const detail = err instanceof Error ? err.message : String(err);
         notes.notifyToast(`笔记服务不可用：${detail}`);
       });
     return () => {
       disposed = true;
       notes.detach();
+      files.detach();
       if (unmount !== null) void unmount();
     };
-  }, "dsh-ui: notes remote");
+  }, "dsh-ui: remotes");
 
   /** 剪藏落点：当前会话 id + 标题。 */
   const saveClip = (noteId: string, text: string): Promise<boolean> => {
@@ -326,12 +335,18 @@ export function apply(ctx: ClientContext): void {
         locale: NS,
         inject: () => ({
           notes,
+          files,
           openSession,
         }),
       },
       SidebarRegion,
     ),
   );
+
+  /** 打开文件（笔记回链 dshui://file/ 与文件 tab 共用）。 */
+  const openFile = (fileId: string) => {
+    void files.open(fileId);
+  };
 
   // 官方浏览器注入面（与官方 apply 一致的接线，目录流洞换成原生 picker）。
   const browserInjected = (): WorkspaceBrowserInjected => ({
@@ -419,6 +434,7 @@ export function apply(ctx: ClientContext): void {
         inject: () => ({
           notes,
           openSession,
+          openFile,
           askInNewSession: (contextText: string) => {
             notes.close();
             void prefillNewSession(contextText);
@@ -443,6 +459,22 @@ export function apply(ctx: ClientContext): void {
         inject: () => ({ notes }),
       },
       Toast,
+    ),
+    ctx.slots.register(
+      {
+        name: "shell.overlay",
+        id: "dsh-ui.file-view",
+        locale: NS,
+        inject: () => ({
+          files,
+          notes,
+          saveClip: (noteId: string, text: string, fileLink: string) =>
+            notes.addClipTo(noteId, { text, sessionId: fileLink }),
+          askHere,
+          askInBranch,
+        }),
+      },
+      FileView,
     ),
   ]);
 }

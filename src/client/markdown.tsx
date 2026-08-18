@@ -22,7 +22,7 @@ function escapeHtml(text: string): string {
 const INLINE_RE =
   /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(__[^_]+__)|(_[^_]+_)|(~~[^~]+~~)|(`[^`]+`)|(\[[^\]]*\]\([^)]*\))/g;
 
-const DSHUI_LINK_RE = /^dshui:\/\/session\/(.+)$/;
+const DSHUI_LINK_RE = /^dshui:\/\/(session|file)\/(.+)$/;
 
 function renderInline(text: string, backLabel: string): string {
   let out = "";
@@ -48,7 +48,7 @@ function renderInline(text: string, backLabel: string): string {
         out +=
           `<span class="dshui-link-wrap">` +
           `<a class="dshui-link" data-href="${escapeHtml(href)}">${escapeHtml(label)}</a>` +
-          `<button class="dshui-link-back" type="button" contenteditable="false" data-session="${escapeHtml(session[1])}">${escapeHtml(backLabel)}</button>` +
+          `<button class="dshui-link-back" type="button" contenteditable="false" data-session="${escapeHtml(`${session[1]}/${session[2]}`)}">${escapeHtml(backLabel)}</button>` +
           `</span>`;
       } else {
         out += `<a class="dshui-extlink" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;

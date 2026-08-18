@@ -156,8 +156,17 @@ function makeCtx() {
     $on: () => () => {},
   };
 
+  const filesFace = {
+    list: async () => ({ ok: true, value: { items: [] } }),
+    get: async ({ id }) => ({ ok: false, error: { code: "not-found", id } }),
+    upload: async () => ({ ok: false, error: { code: "invalid-argument", message: "noop" } }),
+    getBytes: async () => ({ ok: false, error: { code: "not-found", id: "x" } }),
+    delete: async () => ({ ok: true, value: { ok: true } }),
+  };
+
   const ctx = {
-    get: (name) => (name === "remote.notes" ? notesFace : undefined),
+    get: (name) =>
+      name === "remote.notes" ? notesFace : name === "remote.files" ? filesFace : undefined,
     effect: (fn) => {
       const dispose = fn();
       return typeof dispose === "function" ? dispose : () => {};
@@ -207,14 +216,14 @@ function loadAndApply() {
 
 const byName = (calls, name) => calls.registrations.filter((r) => r.name === name);
 
-test("apply 注册侧栏分栏与三个 overlay 条目", () => {
+test("apply 注册侧栏分栏与四个 overlay 条目", () => {
   const { calls } = loadAndApply();
   assert.equal(byName(calls, "sidebar.workspaces").length, 1, "应接管 sidebar.workspaces");
   const overlays = byName(calls, "shell.overlay");
-  assert.equal(overlays.length, 3);
+  assert.equal(overlays.length, 4);
   assert.deepEqual(
     overlays.map((r) => r.id).sort(),
-    ["dsh-ui.note-editor", "dsh-ui.selection-bar", "dsh-ui.toast"],
+    ["dsh-ui.file-view", "dsh-ui.note-editor", "dsh-ui.selection-bar", "dsh-ui.toast"],
   );
 });
 
@@ -223,7 +232,7 @@ test("notes 远程经 $mount 挂载并拉到列表", async () => {
   await sleep(10);
   assert.ok(calls.mounted, "$mount 应被调用");
   assert.equal(calls.mounted.package, "dsh-ui");
-  assert.equal(calls.mounted.descriptors.length, 5);
+  assert.equal(calls.mounted.descriptors.length, 10);
   const sidebar = byName(calls, "sidebar.workspaces")[0].inject();
   assert.ok(sidebar.notes, "侧栏注入应携带 notes 控制器");
   await sleep(10);

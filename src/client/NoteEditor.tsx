@@ -8,6 +8,7 @@ export interface NoteEditorProps {
   t: TranslateNS<typeof NS>;
   notes: NotesController;
   openSession: (sessionId: string) => void;
+  openFile: (fileId: string) => void;
   /** 新建会话并把笔记内容预填为上下文。 */
   askInNewSession: (contextText: string) => void;
   /** 在当前会话追问（预填笔记内容）。 */
@@ -230,7 +231,14 @@ export function NoteEditor(props: NoteEditorProps) {
           placeholder={t("note.body.placeholder")}
           backLabel={t("clip.back")}
           onSourceChange={setBody}
-          onSessionLink={props.openSession}
+          onSessionLink={(href) => {
+            // 回链按钮的 data-session 可能是 file/<id>（文件剪藏）。
+            if (href.startsWith("file/")) {
+              props.openFile(href.slice("file/".length));
+              return;
+            }
+            props.openSession(href);
+          }}
           onAtChange={setAtOpen}
         />
       </div>

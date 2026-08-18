@@ -1,4 +1,4 @@
-import { NOTES_DESCRIPTORS } from "./notes/wire";
+import { NOTES_DESCRIPTORS, FILES_DESCRIPTORS } from "./notes/wire";
 
 /**
  * Typert host 清单：dsh-typert-loader 自动发现本包 exports["./typert"]，
@@ -126,11 +126,41 @@ export const TYPERT = {
           },
         ],
       },
+      {
+        description:
+          "Files sidecar service: stores uploaded PDFs under the harness notes directory, extracts their text for the browser text view, and serves the raw bytes for the native preview.",
+        summary: "Files sidecar service.",
+        tags: [],
+        jsDoc: "/** Files sidecar service for the dsh-ui plugin. */",
+        key: "files",
+        exportName: "FilesService",
+        members: [
+          { kind: "method", name: "list", signature: "@Remote('list') list(): Promise<FilesListResult>", summary: "List files.", jsDoc: "/** List files. */" },
+          { kind: "method", name: "upload", signature: "@Remote('upload') upload(request: FilesUploadRequest): Promise<FilesUploadResult>", summary: "Upload a PDF.", jsDoc: "/** Upload a PDF. */" },
+          { kind: "method", name: "get", signature: "@Remote('get') get(request: FilesGetRequest): Promise<FilesGetResult>", summary: "Read file meta + text.", jsDoc: "/** Read file meta + text. */" },
+          { kind: "method", name: "getBytes", signature: "@Remote('getBytes') getBytes(request: FilesGetBytesRequest): Promise<FilesGetBytesResult>", summary: "Read raw bytes.", jsDoc: "/** Read raw bytes. */" },
+          { kind: "method", name: "delete", signature: "@Remote('delete') delete(request: FilesDeleteRequest): Promise<FilesDeleteResult>", summary: "Delete a file.", jsDoc: "/** Delete a file. */" },
+        ],
+        types: [
+          { name: "FilesListRequest", declaration: "export interface FilesListRequest {}" },
+          { name: "FilesListResult", declaration: "export type FilesListResult = NotesOk<{ items: FileMeta[] }> | NotesErrorResult;" },
+          { name: "FilesUploadRequest", declaration: "export interface FilesUploadRequest { readonly name: string; readonly mime: string; readonly bytesBase64: string; }" },
+          { name: "FilesUploadResult", declaration: "export type FilesUploadResult = NotesOk<{ file: StoredFile }> | NotesInvalidArgument;" },
+          { name: "FilesGetRequest", declaration: "export interface FilesGetRequest { readonly id: string; }" },
+          { name: "FilesGetResult", declaration: "export type FilesGetResult = NotesOk<{ file: StoredFile }> | NotesErrorResult;" },
+          { name: "FilesGetBytesRequest", declaration: "export interface FilesGetBytesRequest { readonly id: string; }" },
+          { name: "FilesGetBytesResult", declaration: "export type FilesGetBytesResult = NotesOk<{ bytesBase64: string }> | NotesErrorResult;" },
+          { name: "FilesDeleteRequest", declaration: "export interface FilesDeleteRequest { readonly id: string; }" },
+          { name: "FilesDeleteResult", declaration: "export type FilesDeleteResult = NotesOk<{ ok?: true; absent?: true }> | NotesErrorResult;" },
+          { name: "FileMeta", declaration: "export interface FileMeta { readonly id: string; readonly name: string; readonly mime: string; readonly size: number; readonly uploadedAt: number; }" },
+          { name: "StoredFile", declaration: "export interface StoredFile extends FileMeta { readonly text?: string; }" },
+        ],
+      },
     ],
     events: [],
     objects: [],
   },
-  invocations: NOTES_DESCRIPTORS,
+  invocations: [...NOTES_DESCRIPTORS, ...FILES_DESCRIPTORS],
 };
 
 export type TypertManifest = typeof TYPERT;

@@ -1,7 +1,10 @@
 import type { Context } from "@deepseek-ai/cordis";
+import { join } from "node:path";
 import { dshHomePath } from "@deepseek-ai/dsh-home-paths";
 import { NotesService } from "./notes/service";
 import { NotesStore } from "./notes/store";
+import { FilesService } from "./notes/files-service";
+import { FilesStore } from "./notes/files-store";
 import { defineNotesTool } from "./notes/tool";
 
 /**
@@ -18,6 +21,8 @@ export const inject = ["tools"];
 
 export { NotesService } from "./notes/service";
 export { NotesStore } from "./notes/store";
+export { FilesService } from "./notes/files-service";
+export { FilesStore } from "./notes/files-store";
 export type { Note, NoteClip, NoteListItem } from "./notes/contract";
 
 export interface DshUiHostConfig {
@@ -31,6 +36,10 @@ export function apply(ctx: Context, config: DshUiHostConfig = {}): void {
 
   // Typert 远程服务（自身注册为 cordis Service `notes`）。
   new NotesService(ctx, store);
+
+  // 文件/PDF 远程服务（与笔记同根目录下的 files/ 子目录）。
+  const filesStore = new FilesStore(join(root, "files"));
+  new FilesService(ctx, filesStore);
 
   // agent 工具：与远程服务共享同一存储。
   const notesTool = defineNotesTool(store);

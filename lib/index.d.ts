@@ -11,6 +11,8 @@ import type { Context } from "@deepseek-ai/cordis";
 export declare const inject: string[];
 export { NotesService } from "./notes/service";
 export { NotesStore } from "./notes/store";
+export { FilesService } from "./notes/files-service";
+export { FilesStore } from "./notes/files-store";
 export type { Note, NoteClip, NoteListItem } from "./notes/contract";
 export interface DshUiHostConfig {
     /** 笔记存储根目录，默认 dshHomePath('notes')。 */

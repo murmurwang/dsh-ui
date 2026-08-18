@@ -117,19 +117,27 @@ function persistLastOpenId(id: string): void {
 
 const CLIP_BACK_LINK = "↩ 原对话";
 
+/** 回链 URL：会话（dshui://session/<id>）或文件（dshui://file/<id>）。 */
+function backLinkUrl(sessionId: string): string {
+  return sessionId.startsWith("file/")
+    ? `dshui://file/${sessionId.slice("file/".length)}`
+    : `dshui://session/${sessionId}`;
+}
+
 /**
  * 剪藏 → 正文追加内容：
- * - 单行文本：整段作为回链超链接文字（[原文](dshui://session/<id>)）；
+ * - 单行文本：整段作为回链超链接文字（[原文](url)）；
  * - 多行/含块级结构：保留 Markdown 结构原样追加，尾部附一条回链行。
  */
 function clipToBody(clip: { text: string; sessionId: string }): string {
-  const link = `[${CLIP_BACK_LINK}](dshui://session/${clip.sessionId})`;
+  const url = backLinkUrl(clip.sessionId);
+  const link = `[${CLIP_BACK_LINK}](${url})`;
   const text = clip.text.trim();
   if (text === "") return link;
   if (text.includes("\n")) {
     return `${text}\n\n${link}`;
   }
-  return `[${text}](dshui://session/${clip.sessionId})`;
+  return `[${text}](${url})`;
 }
 
 const POLL_MS = 3000;

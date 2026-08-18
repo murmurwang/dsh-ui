@@ -40,7 +40,7 @@ test("markdownToHtml：回链渲染为灰色链接 + 返回按钮", () => {
   assert.ok(html.includes('class="dshui-link"'), "应输出灰色链接");
   assert.ok(html.includes('data-href="dshui://session/s1"'), "应带 href");
   assert.ok(html.includes('class="dshui-link-back"'), "应带返回按钮");
-  assert.ok(html.includes('data-session="s1"'), "返回按钮带会话 id");
+  assert.ok(html.includes('data-session="session/s1"'), "返回按钮带会话 id");
   assert.ok(html.includes(">选中的文字</a>"), "链接文字为引用原文");
   assert.ok(!html.includes('class="dshui-link" href='), "回链不能是可跳转的 href（编辑态点按即输入）");
 });

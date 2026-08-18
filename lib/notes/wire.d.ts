@@ -414,3 +414,355 @@ export declare const NOTES_DESCRIPTORS: readonly [{
         readonly column: 1;
     };
 }];
+export declare const fileMetaSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    mime: z.ZodString;
+    size: z.ZodNumber;
+    uploadedAt: z.ZodNumber;
+}, z.core.$strip>;
+export declare const storedFileSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    mime: z.ZodString;
+    size: z.ZodNumber;
+    uploadedAt: z.ZodNumber;
+    text: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const filesListRequestSchema: z.ZodObject<{}, z.core.$strip>;
+export declare const filesListResultSchema: z.ZodUnion<readonly [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    value: z.ZodObject<{
+        items: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            name: z.ZodString;
+            mime: z.ZodString;
+            size: z.ZodNumber;
+            uploadedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    error: z.ZodUnion<readonly [z.ZodObject<{
+        code: z.ZodLiteral<"not-found">;
+        id: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"version-conflict">;
+        current: z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            body: z.ZodString;
+            clips: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                text: z.ZodString;
+                sessionId: z.ZodString;
+                sessionTitle: z.ZodOptional<z.ZodString>;
+                createdAt: z.ZodNumber;
+            }, z.core.$strip>>;
+            version: z.ZodString;
+            createdAt: z.ZodNumber;
+            updatedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"invalid-argument">;
+        message: z.ZodString;
+    }, z.core.$strip>]>;
+}, z.core.$strip>]>;
+export declare const filesUploadRequestSchema: z.ZodObject<{
+    name: z.ZodString;
+    mime: z.ZodString;
+    bytesBase64: z.ZodString;
+}, z.core.$strip>;
+export declare const filesUploadResultSchema: z.ZodUnion<readonly [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    value: z.ZodObject<{
+        file: z.ZodObject<{
+            id: z.ZodString;
+            name: z.ZodString;
+            mime: z.ZodString;
+            size: z.ZodNumber;
+            uploadedAt: z.ZodNumber;
+            text: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    error: z.ZodUnion<readonly [z.ZodObject<{
+        code: z.ZodLiteral<"not-found">;
+        id: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"version-conflict">;
+        current: z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            body: z.ZodString;
+            clips: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                text: z.ZodString;
+                sessionId: z.ZodString;
+                sessionTitle: z.ZodOptional<z.ZodString>;
+                createdAt: z.ZodNumber;
+            }, z.core.$strip>>;
+            version: z.ZodString;
+            createdAt: z.ZodNumber;
+            updatedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"invalid-argument">;
+        message: z.ZodString;
+    }, z.core.$strip>]>;
+}, z.core.$strip>]>;
+export declare const filesGetRequestSchema: z.ZodObject<{
+    id: z.ZodString;
+}, z.core.$strip>;
+export declare const filesGetResultSchema: z.ZodUnion<readonly [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    value: z.ZodObject<{
+        file: z.ZodObject<{
+            id: z.ZodString;
+            name: z.ZodString;
+            mime: z.ZodString;
+            size: z.ZodNumber;
+            uploadedAt: z.ZodNumber;
+            text: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    error: z.ZodUnion<readonly [z.ZodObject<{
+        code: z.ZodLiteral<"not-found">;
+        id: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"version-conflict">;
+        current: z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            body: z.ZodString;
+            clips: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                text: z.ZodString;
+                sessionId: z.ZodString;
+                sessionTitle: z.ZodOptional<z.ZodString>;
+                createdAt: z.ZodNumber;
+            }, z.core.$strip>>;
+            version: z.ZodString;
+            createdAt: z.ZodNumber;
+            updatedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"invalid-argument">;
+        message: z.ZodString;
+    }, z.core.$strip>]>;
+}, z.core.$strip>]>;
+export declare const filesGetBytesRequestSchema: z.ZodObject<{
+    id: z.ZodString;
+}, z.core.$strip>;
+export declare const filesGetBytesResultSchema: z.ZodUnion<readonly [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    value: z.ZodObject<{
+        bytesBase64: z.ZodString;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    error: z.ZodUnion<readonly [z.ZodObject<{
+        code: z.ZodLiteral<"not-found">;
+        id: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"version-conflict">;
+        current: z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            body: z.ZodString;
+            clips: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                text: z.ZodString;
+                sessionId: z.ZodString;
+                sessionTitle: z.ZodOptional<z.ZodString>;
+                createdAt: z.ZodNumber;
+            }, z.core.$strip>>;
+            version: z.ZodString;
+            createdAt: z.ZodNumber;
+            updatedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"invalid-argument">;
+        message: z.ZodString;
+    }, z.core.$strip>]>;
+}, z.core.$strip>]>;
+export declare const filesDeleteRequestSchema: z.ZodObject<{
+    id: z.ZodString;
+}, z.core.$strip>;
+export declare const filesDeleteResultSchema: z.ZodUnion<readonly [z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    value: z.ZodObject<{
+        ok: z.ZodOptional<z.ZodLiteral<true>>;
+        absent: z.ZodOptional<z.ZodLiteral<true>>;
+    }, z.core.$strip>;
+}, z.core.$strip>, z.ZodObject<{
+    ok: z.ZodLiteral<false>;
+    error: z.ZodUnion<readonly [z.ZodObject<{
+        code: z.ZodLiteral<"not-found">;
+        id: z.ZodString;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"version-conflict">;
+        current: z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            body: z.ZodString;
+            clips: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                text: z.ZodString;
+                sessionId: z.ZodString;
+                sessionTitle: z.ZodOptional<z.ZodString>;
+                createdAt: z.ZodNumber;
+            }, z.core.$strip>>;
+            version: z.ZodString;
+            createdAt: z.ZodNumber;
+            updatedAt: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        code: z.ZodLiteral<"invalid-argument">;
+        message: z.ZodString;
+    }, z.core.$strip>]>;
+}, z.core.$strip>]>;
+export declare const FILES_DESCRIPTORS: readonly [{
+    readonly id: "dsh-ui#files/list";
+    readonly service: "files";
+    readonly namespace: "files";
+    readonly method: "list";
+    readonly invocation: {
+        readonly kind: "direct";
+    };
+    readonly parameters: {
+        name: string;
+        wire: string;
+        source: "json";
+        codec: {
+            mode: "strict";
+            typeSymbol: string;
+            schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+        };
+    }[];
+    readonly result: {
+        mode: "strict";
+        typeSymbol: string;
+        schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+    };
+    readonly sourceLocation: {
+        readonly file: "src/notes/files-service.ts";
+        readonly line: 1;
+        readonly column: 1;
+    };
+}, {
+    readonly id: "dsh-ui#files/upload";
+    readonly service: "files";
+    readonly namespace: "files";
+    readonly method: "upload";
+    readonly invocation: {
+        readonly kind: "direct";
+    };
+    readonly parameters: {
+        name: string;
+        wire: string;
+        source: "json";
+        codec: {
+            mode: "strict";
+            typeSymbol: string;
+            schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+        };
+    }[];
+    readonly result: {
+        mode: "strict";
+        typeSymbol: string;
+        schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+    };
+    readonly sourceLocation: {
+        readonly file: "src/notes/files-service.ts";
+        readonly line: 2;
+        readonly column: 1;
+    };
+}, {
+    readonly id: "dsh-ui#files/get";
+    readonly service: "files";
+    readonly namespace: "files";
+    readonly method: "get";
+    readonly invocation: {
+        readonly kind: "direct";
+    };
+    readonly parameters: {
+        name: string;
+        wire: string;
+        source: "json";
+        codec: {
+            mode: "strict";
+            typeSymbol: string;
+            schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+        };
+    }[];
+    readonly result: {
+        mode: "strict";
+        typeSymbol: string;
+        schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+    };
+    readonly sourceLocation: {
+        readonly file: "src/notes/files-service.ts";
+        readonly line: 3;
+        readonly column: 1;
+    };
+}, {
+    readonly id: "dsh-ui#files/getBytes";
+    readonly service: "files";
+    readonly namespace: "files";
+    readonly method: "getBytes";
+    readonly invocation: {
+        readonly kind: "direct";
+    };
+    readonly parameters: {
+        name: string;
+        wire: string;
+        source: "json";
+        codec: {
+            mode: "strict";
+            typeSymbol: string;
+            schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+        };
+    }[];
+    readonly result: {
+        mode: "strict";
+        typeSymbol: string;
+        schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+    };
+    readonly sourceLocation: {
+        readonly file: "src/notes/files-service.ts";
+        readonly line: 4;
+        readonly column: 1;
+    };
+}, {
+    readonly id: "dsh-ui#files/delete";
+    readonly service: "files";
+    readonly namespace: "files";
+    readonly method: "delete";
+    readonly invocation: {
+        readonly kind: "direct";
+    };
+    readonly parameters: {
+        name: string;
+        wire: string;
+        source: "json";
+        codec: {
+            mode: "strict";
+            typeSymbol: string;
+            schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+        };
+    }[];
+    readonly result: {
+        mode: "strict";
+        typeSymbol: string;
+        schema: z.ZodType<unknown, unknown, z.core.$ZodTypeInternals<unknown, unknown>>;
+    };
+    readonly sourceLocation: {
+        readonly file: "src/notes/files-service.ts";
+        readonly line: 5;
+        readonly column: 1;
+    };
+}];

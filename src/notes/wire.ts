@@ -161,3 +161,91 @@ export const NOTES_DESCRIPTORS = [
     sourceLocation: { file: "src/notes/service.ts", line: 5, column: 1 },
   },
 ] as const;
+
+// —— files 远程（二期：文件/PDF）——
+
+export const fileMetaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  mime: z.string(),
+  size: z.number(),
+  uploadedAt: z.number(),
+});
+
+export const storedFileSchema = fileMetaSchema.extend({
+  text: z.string().optional(),
+});
+
+export const filesListRequestSchema = z.object({});
+export const filesListResultSchema = result(z.object({ items: z.array(fileMetaSchema) }));
+
+export const filesUploadRequestSchema = z.object({
+  name: z.string(),
+  mime: z.string(),
+  bytesBase64: z.string(),
+});
+export const filesUploadResultSchema = result(z.object({ file: storedFileSchema }));
+
+export const filesGetRequestSchema = z.object({ id: z.string() });
+export const filesGetResultSchema = result(z.object({ file: storedFileSchema }));
+
+export const filesGetBytesRequestSchema = z.object({ id: z.string() });
+export const filesGetBytesResultSchema = result(z.object({ bytesBase64: z.string() }));
+
+export const filesDeleteRequestSchema = z.object({ id: z.string() });
+export const filesDeleteResultSchema = result(
+  z.object({ ok: z.literal(true).optional(), absent: z.literal(true).optional() }),
+);
+
+export const FILES_DESCRIPTORS = [
+  {
+    id: "dsh-ui#files/list",
+    service: "files",
+    namespace: "files",
+    method: "list",
+    invocation: { kind: "direct" as const },
+    parameters: param(filesListRequestSchema, "dsh-ui/types#FilesListRequest"),
+    result: codec("dsh-ui/types#FilesListResult", filesListResultSchema),
+    sourceLocation: { file: "src/notes/files-service.ts", line: 1, column: 1 },
+  },
+  {
+    id: "dsh-ui#files/upload",
+    service: "files",
+    namespace: "files",
+    method: "upload",
+    invocation: { kind: "direct" as const },
+    parameters: param(filesUploadRequestSchema, "dsh-ui/types#FilesUploadRequest"),
+    result: codec("dsh-ui/types#FilesUploadResult", filesUploadResultSchema),
+    sourceLocation: { file: "src/notes/files-service.ts", line: 2, column: 1 },
+  },
+  {
+    id: "dsh-ui#files/get",
+    service: "files",
+    namespace: "files",
+    method: "get",
+    invocation: { kind: "direct" as const },
+    parameters: param(filesGetRequestSchema, "dsh-ui/types#FilesGetRequest"),
+    result: codec("dsh-ui/types#FilesGetResult", filesGetResultSchema),
+    sourceLocation: { file: "src/notes/files-service.ts", line: 3, column: 1 },
+  },
+  {
+    id: "dsh-ui#files/getBytes",
+    service: "files",
+    namespace: "files",
+    method: "getBytes",
+    invocation: { kind: "direct" as const },
+    parameters: param(filesGetBytesRequestSchema, "dsh-ui/types#FilesGetBytesRequest"),
+    result: codec("dsh-ui/types#FilesGetBytesResult", filesGetBytesResultSchema),
+    sourceLocation: { file: "src/notes/files-service.ts", line: 4, column: 1 },
+  },
+  {
+    id: "dsh-ui#files/delete",
+    service: "files",
+    namespace: "files",
+    method: "delete",
+    invocation: { kind: "direct" as const },
+    parameters: param(filesDeleteRequestSchema, "dsh-ui/types#FilesDeleteRequest"),
+    result: codec("dsh-ui/types#FilesDeleteResult", filesDeleteResultSchema),
+    sourceLocation: { file: "src/notes/files-service.ts", line: 5, column: 1 },
+  },
+] as const;

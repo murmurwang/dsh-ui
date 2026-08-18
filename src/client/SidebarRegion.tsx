@@ -9,6 +9,7 @@ import {
   Modal,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type { NotesController } from "./notes";
+import type { FilesController } from "./files";
 import { NS } from "./locales";
 
 export interface SidebarRegionProps {
@@ -21,6 +22,7 @@ export interface SidebarRegionProps {
   renderSlot: (name: "sidebar.workspaces.browser", owner: { wide: boolean; expandSidebar: () => void }) => React.ReactNode;
   /** inject 注入的业务面。 */
   notes: NotesController;
+  files: FilesController;
   openSession: (sessionId: string) => void;
 }
 
@@ -37,9 +39,11 @@ function readTab(): Tab {
   }
 }
 
-function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
+function NotesTab({ t, notes, menuId, setMenuId }: Pick<SidebarRegionProps, "t" | "notes"> & {
+  menuId: string | null;
+  setMenuId: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
   const state = React.useSyncExternalStore(notes.subscribe, notes.getSnapshot, notes.getSnapshot);
-  const [menuId, setMenuId] = React.useState<string | null>(null);
   const [renameTarget, setRenameTarget] = React.useState<{ id: string; currentTitle: string } | null>(null);
   const [renameDraft, setRenameDraft] = React.useState("");
   const [renaming, setRenaming] = React.useState(false);
@@ -223,8 +227,81 @@ function NotesTab({ t, notes }: Pick<SidebarRegionProps, "t" | "notes">) {
   );
 }
 
-function FilesTab({ t }: Pick<SidebarRegionProps, "t">) {
-  return <div className="dshui-side-empty">{t("files.placeholder")}</div>;
+function FilesTab({ t, files, menuId, setMenuId }: Pick<SidebarRegionProps, "t" | "files"> & {
+  menuId: string | null;
+  setMenuId: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
+  const state = React.useSyncExternalStore(files.subscribe, files.getSnapshot, files.getSnapshot);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="dshui-side-pane">
+      <div
+        className="dshui-side-add"
+        role="button"
+        tabIndex={0}
+        onClick={() => inputRef.current?.click()}
+      >
+        <span className="dshui-side-add-plus">＋</span>
+        <span>{t("files.add")}</span>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf"
+        style={{ display: "none" }}
+        onChange={(ev) => {
+          const file = ev.target.files?.[0];
+          if (file !== undefined) void files.upload(file);
+          ev.target.value = "";
+        }}
+      />
+      {state.items.length === 0 ? (
+        <div className="dshui-side-empty">{t("files.empty")}</div>
+      ) : null}
+      {state.items.map((item) => (
+        <div key={item.id} className="dshui-side-row-wrap">
+          <button
+            type="button"
+            className={
+              state.openId === item.id ? "dshui-side-row dshui-side-row-current" : "dshui-side-row"
+            }
+            onClick={() => void files.open(item.id)}
+          >
+            <span className="dshui-side-row-title">{item.name}</span>
+            <span className="dshui-side-meta">{Math.max(1, Math.round(item.size / 1024))}KB</span>
+          </button>
+          <span className="dshui-side-row-actions">
+            <Menu
+              open={menuId === `f:${item.id}`}
+              onClose={() => setMenuId(null)}
+              items={[
+                { id: "delete", label: t("files.delete"), icon: <IconTrashOutline16 />, danger: true },
+              ]}
+              onSelect={(id) => {
+                setMenuId(null);
+                if (id === "delete") void files.remove(item.id);
+              }}
+              portal
+              closeOnPointerLeave
+              anchor={(
+                <button
+                  type="button"
+                  className="dshui-side-icon-btn"
+                  aria-label={t("files.menu.aria", { name: item.name })}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    setMenuId((v) => (v === `f:${item.id}` ? null : `f:${item.id}`));
+                  }}
+                >
+                  <IconEllipsisOutline16 />
+                </button>
+              )}
+            />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** 侧栏工作区座位的新占有者：工作区 / 笔记 / 文件 三分栏。
@@ -232,6 +309,7 @@ function FilesTab({ t }: Pick<SidebarRegionProps, "t">) {
 export function SidebarRegion(props: SidebarRegionProps) {
   const { t, wide, renderSlot } = props;
   const [tab, setTab] = React.useState<Tab>(readTab);
+  const [menuId, setMenuId] = React.useState<string | null>(null);
 
   const pick = (next: Tab) => {
     setTab(next);
@@ -253,8 +331,14 @@ export function SidebarRegion(props: SidebarRegionProps) {
             : snapshot.items[0].id;
         void props.notes.open(target);
       }
+    } else if (next === "files") {
+      const snapshot = props.files.getSnapshot();
+      if (snapshot.openFile === null && snapshot.items.length > 0) {
+        void props.files.open(snapshot.items[0].id);
+      }
     } else {
       props.notes.close();
+      props.files.close();
     }
   };
 
@@ -293,9 +377,9 @@ export function SidebarRegion(props: SidebarRegionProps) {
         tab === "workspaces" ? (
           renderSlot("sidebar.workspaces.browser", { wide, expandSidebar: props.expandSidebar })
         ) : tab === "notes" ? (
-          <NotesTab t={t} notes={props.notes} />
+          <NotesTab t={t} notes={props.notes} menuId={menuId} setMenuId={setMenuId} />
         ) : (
-          <FilesTab t={t} />
+          <FilesTab t={t} files={props.files} menuId={menuId} setMenuId={setMenuId} />
         )
       ) : null}
     </div>
