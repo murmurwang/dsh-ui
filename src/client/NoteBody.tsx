@@ -186,27 +186,46 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       return;
     }
     if (ev.key === "Enter") {
-      // 回链内按 Enter：不撕开链接，光标移到链接包裹之后。
+      // 回链内按 Enter：把链接在光标处分成两行 —— 前半留在原行，
+      // 后半进下方新段落，两半都保留完整回链（data-href 不丢）。
       const selBefore = window.getSelection();
       const caret = selBefore?.anchorNode ?? null;
-      const inLink =
-        caret !== null &&
-        (caret instanceof Element ? caret : caret.parentElement)?.closest?.(
-          ".dshui-link-wrap, a.dshui-link",
-        ) != null;
-      if (inLink) {
+      const anchorEl =
+        caret !== null
+          ? (caret instanceof Element ? caret : caret.parentElement)?.closest?.("a.dshui-link") ?? null
+          : null;
+      if (anchorEl !== null && selBefore !== null) {
         ev.preventDefault();
-        const wrap =
-          (caret instanceof Element ? caret : caret.parentElement)?.closest?.(
-            ".dshui-link-wrap",
-          ) ?? null;
-        if (wrap !== null && selBefore !== null) {
-          const range = document.createRange();
-          range.setStartAfter(wrap);
-          range.collapse(true);
-          selBefore.removeAllRanges();
-          selBefore.addRange(range);
+        const href = anchorEl.getAttribute("data-href") ?? "";
+        const offset = selBefore.anchorOffset;
+        const full = anchorEl.textContent ?? "";
+        const front = full.slice(0, offset);
+        const back = full.slice(offset);
+        const block = topBlock(anchorEl, el) ?? (anchorEl.parentElement ?? el);
+        // 前半留在原锚；空前半则移除锚（避免 [](url) 死链）。
+        if (front === "") {
+          anchorEl.remove();
+        } else {
+          anchorEl.textContent = front;
         }
+        // 新段落：后半（若有）作为新回链；光标放其前。
+        const p = document.createElement("p");
+        if (back !== "") {
+          const a = document.createElement("a");
+          a.className = "dshui-link";
+          a.setAttribute("data-href", href);
+          a.textContent = back;
+          p.appendChild(a);
+        } else {
+          p.appendChild(document.createElement("br"));
+        }
+        block.after(p);
+        const range = document.createRange();
+        range.setStart(p, 0);
+        range.collapse(true);
+        selBefore.removeAllRanges();
+        selBefore.addRange(range);
+        emit();
         return;
       }
       // 标题类段落末尾按 Enter：新段落不带标题类（Chromium 会复制类）。
