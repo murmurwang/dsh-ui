@@ -76,6 +76,19 @@ export function NoteEditor(props: NoteEditorProps) {
     notes.setDirty(dirty);
   }, [dirty, notes]);
 
+  // 编辑态：textarea 随内容自动长高（外层 body 滚动），长笔记可完整滚动。
+  const resizeTextarea = React.useCallback(() => {
+    const el = textareaRef.current;
+    if (el === null) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight + 2}px`;
+  }, []);
+
+  React.useEffect(() => {
+    if (mode !== "edit") return;
+    resizeTextarea();
+  }, [body, mode, open?.id, resizeTextarea]);
+
   // Esc 关闭。
   React.useEffect(() => {
     if (open === null) return;
