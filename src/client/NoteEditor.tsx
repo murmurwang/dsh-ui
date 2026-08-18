@@ -101,6 +101,54 @@ export function NoteEditor(props: NoteEditorProps) {
     notes.setDirty(dirty);
   }, [dirty, notes]);
 
+  // —— 自动保存：输入停顿后落盘；离开/关闭/切 tab/页面隐藏时兜底 ——
+  const openRef = React.useRef(open);
+  const dirtyRef = React.useRef(dirty);
+  const titleRef = React.useRef(title);
+  const bodyRef = React.useRef(body);
+  openRef.current = open;
+  dirtyRef.current = dirty;
+  titleRef.current = title;
+  bodyRef.current = body;
+
+  // 停顿 1.5s 自动保存（有未保存改动时）。
+  React.useEffect(() => {
+    if (open === null || !dirty) return;
+    const timer = window.setTimeout(() => {
+      void saveNow();
+    }, 1500);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body, title, dirty]);
+
+  // 组件卸载（关闭/切 tab）时兜底保存未保存改动（用旧快照版本，不误写他处）。
+  React.useEffect(() => {
+    return () => {
+      const snapshot = openRef.current;
+      if (snapshot !== null && dirtyRef.current) {
+        void notes.saveAs(
+          { id: snapshot.id, version: snapshot.version },
+          { title: titleRef.current, body: bodyRef.current },
+        );
+      }
+    };
+  }, [notes]);
+
+  // 页面隐藏/刷新前尽力保存（异步 RPC 尽力而为）。
+  React.useEffect(() => {
+    const onPageHide = () => {
+      const snapshot = openRef.current;
+      if (snapshot !== null && dirtyRef.current) {
+        void notes.saveAs(
+          { id: snapshot.id, version: snapshot.version },
+          { title: titleRef.current, body: bodyRef.current },
+        );
+      }
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [notes]);
+
   // Esc 关闭。
   React.useEffect(() => {
     if (open === null) return;
