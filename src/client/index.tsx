@@ -57,11 +57,6 @@ const css = `
 .dshui-side-row-current{background:var(--dsw-alias-interactive-bg-hover-solid,#eef0f3);color:var(--dsw-static-deepseek-500,#4d6bfe)}
 .dshui-side-row-title{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
 .dshui-side-meta{color:var(--dsw-alias-label-caption,#8a919f);font-size:11px}
-.dshui-side-dot{width:6px;height:6px;border-radius:3px;flex:none}
-.dshui-side-dot-running{background:var(--dsw-static-deepseek-500,#4d6bfe);animation:dshui-pulse 1.6s ease-in-out infinite}
-.dshui-side-dot-ask{background:var(--dsw-alias-state-warn-primary,#f7ba1e)}
-.dshui-side-dot-done{background:var(--dsw-alias-state-success-primary,#00b42a)}
-@keyframes dshui-pulse{0%,100%{opacity:.35}50%{opacity:1}}
 .dshui-side-empty{padding:10px 8px;color:var(--dsw-alias-label-tertiary,#8a919f);font-size:12px;line-height:18px}
 /* 笔记编辑器 */
 .dshui-note-shell{position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;background:var(--dsw-alias-bg-base,#fff);font-family:var(--dsw-font-family,system-ui)}

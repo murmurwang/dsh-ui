@@ -5,6 +5,7 @@ import {
   IconFolderClose16,
   IconFolderOpen16,
   IconPlusOutline16,
+  StateDot,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 import type {
   SessionListState,
@@ -110,6 +111,19 @@ function GroupHeader({
   );
 }
 
+type SessionDotState = "warning" | "ongoing" | "done";
+
+/**
+ * 会话状态点语义 —— 与内建列表完全一致：
+ * 待确认（approval/plan-review/question）优先于运行中，运行中优先于完成；
+ * completed 与 idle 都落 "done"（绿色）。
+ */
+function sessionDotState(s: { pendingInteraction?: unknown; running: boolean }): SessionDotState {
+  if (s.pendingInteraction !== undefined) return "warning";
+  if (s.running) return "ongoing";
+  return "done";
+}
+
 function WorkspacesTab({
   t,
   useWorkspaces,
@@ -170,13 +184,7 @@ function WorkspacesTab({
         onClick={() => openSession(id)}
       >
         <span className="dshui-side-row-title">{s.displayTitle}</span>
-        {s.running ? <span className="dshui-side-dot dshui-side-dot-running" /> : null}
-        {s.pendingInteraction !== undefined ? (
-          <span className="dshui-side-dot dshui-side-dot-ask" />
-        ) : null}
-        {s.completed === true && !s.running ? (
-          <span className="dshui-side-dot dshui-side-dot-done" />
-        ) : null}
+        <StateDot state={sessionDotState(s)} />
       </button>
     );
   };
