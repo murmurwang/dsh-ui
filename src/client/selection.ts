@@ -2,12 +2,16 @@
 export interface SelectionSnapshot {
   /** 选中的纯文本（trim 后）。 */
   text: string;
+  /** 选区 DOM 序列化成的 Markdown（保留标题/加粗/列表等格式，用于存笔记）。 */
+  markdown: string;
   /** 选区包围盒（视口坐标），用于浮窗定位。 */
   rect: DOMRect;
   /** 选区起止节点，用于排除判断。 */
   anchorNode: Node | null;
   focusNode: Node | null;
 }
+
+import { serializeToMarkdown } from "./markdown";
 
 const EDITABLE_SELECTOR =
   "textarea, input, [contenteditable='true'], [contenteditable='']";
@@ -60,9 +64,19 @@ export function readSelection(
     return null;
   }
   if (sel.rangeCount === 0) return null;
-  const rect = sel.getRangeAt(0).getBoundingClientRect();
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) return null;
-  return { text, rect, anchorNode, focusNode };
+  // 格式保留：把选区 DOM 片段序列化成 Markdown（克隆不影响原文档）。
+  let markdown = text;
+  try {
+    const fragment = range.cloneContents();
+    const md = serializeToMarkdown(fragment as unknown as Element).trim();
+    if (md !== "") markdown = md;
+  } catch {
+    markdown = text;
+  }
+  return { text, markdown, rect, anchorNode, focusNode };
 }
 
 /**

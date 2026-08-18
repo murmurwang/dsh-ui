@@ -1,6 +1,127 @@
 import * as React from "react";
 import { markdownToHtml, serializeToMarkdown } from "./markdown";
 
+/** 光标所在的最外层块（父节点为编辑根的元素）。 */
+function topBlock(node: Node | null, root: HTMLElement): HTMLElement | null {
+  let current: Node | null = node;
+  while (current !== null && current !== root) {
+    if (current instanceof Element && current.parentElement === root) {
+      return current as HTMLElement;
+    }
+    current = current.parentNode;
+  }
+  return null;
+}
+
+function setCaretEnd(el: HTMLElement): void {
+  const sel = window.getSelection();
+  if (sel === null) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/** 把光标放到指定元素的第 offset 个字符处。 */
+function setCaretAt(el: HTMLElement, offset: number): void {
+  const sel = window.getSelection();
+  if (sel === null) return;
+  const range = document.createRange();
+  const first = el.firstChild;
+  if (first !== null && first.nodeType === Node.TEXT_NODE) {
+    const textLen = (first.nodeValue ?? "").length;
+    range.setStart(first, Math.max(0, Math.min(offset, textLen)));
+    range.collapse(true);
+  } else {
+    range.selectNodeContents(el);
+    range.collapse(false);
+  }
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/** 找到容器内第一个文本节点。 */
+function firstTextNode(container: Node): Text | null {
+  if (container.nodeType === Node.TEXT_NODE) return container as Text;
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  return walker.nextNode() as Text | null;
+}
+
+/**
+ * 块级快捷转换（浏览器原生编辑操作，光标与撤销栈由浏览器托管）：
+ * 1. 用 Range.deleteContents() 删除行首标记；
+ * 2. execCommand("formatBlock") 把当前块转为目标块类型。
+ */
+function applyBlockShortcut(root: HTMLElement): boolean {
+  const sel = window.getSelection();
+  if (sel === null || sel.rangeCount === 0) return false;
+  const node = sel.anchorNode;
+  if (node === null) return false;
+
+  const block = topBlock(node, root);
+  let container: HTMLElement;
+  if (block !== null) {
+    if (block.tagName !== "P" && block.tagName !== "DIV") return false;
+    container = block;
+  } else if (node.parentNode === root) {
+    container = root;
+  } else {
+    return false;
+  }
+  // keydown 时机：当前行文本恰好是标记本身（空格尚未插入）。
+  const text = container.textContent ?? "";
+
+  const firstText = firstTextNode(container);
+  if (firstText === null) return false;
+  // 选中标记并用原生 delete 命令删除：浏览器视为用户删除，光标由它托管。
+  const deleteMarker = (markerLen: number): void => {
+    const sel = window.getSelection();
+    if (sel === null) return;
+    const range = document.createRange();
+    range.setStart(firstText, 0);
+    range.setEnd(firstText, Math.min(markerLen, (firstText.nodeValue ?? "").length));
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand("delete");
+  };
+
+  // 标题：不换元素 —— 有块就删标记加类；裸文本根则包进带标题类的 P。
+  const heading = /^(#{1,6})$/.exec(text);
+  if (heading !== null) {
+    deleteMarker(heading[0].length);
+    const cls = `dshui-md-h${heading[1].length}`;
+    if (block !== null) {
+      block.className = cls;
+    } else {
+      const p = document.createElement("p");
+      p.className = cls;
+      while (container.firstChild !== null) p.appendChild(container.firstChild);
+      container.appendChild(p);
+    }
+    return true;
+  }
+
+  // 列表/引用同样不改元素：删标记 + 视觉类（CSS 呈现、序列化还原）。
+  let markerLen = 0;
+  let cls = "";
+  if (text === "-") {
+    markerLen = 1;
+    cls = "dshui-md-ul";
+  } else if (text === "1.") {
+    markerLen = 2;
+    cls = "dshui-md-ol";
+  } else if (text === ">") {
+    markerLen = 1;
+    cls = "dshui-md-quote";
+  } else {
+    return false;
+  }
+  deleteMarker(markerLen);
+  if (block !== null) block.className = cls;
+  return true;
+}
+
 export interface NoteBodyProps {
   /** Markdown 源码（存储与 agent 工具的权威格式）。 */
   source: string;
@@ -50,6 +171,50 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
     emit();
   };
 
+  /**
+   * 块级快捷输入：在空格 keydown 拦截（preventDefault 阻止空格进入文档，
+   * 从而避开 input 事件中修改 DOM 导致浏览器吞掉后续输入的竞态）。
+   * 转换只做两件浏览器无感的事：Range 删标记 + 段落加类 / formatBlock。
+   */
+  const onKeyDown = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (el === null) return;
+    if (ev.key === " ") {
+      if (!applyBlockShortcut(el)) return;
+      ev.preventDefault();
+      emit();
+      return;
+    }
+    if (ev.key === "Enter") {
+      // 标题类段落末尾按 Enter：新段落不带标题类（Chromium 会复制类）。
+      const sel = window.getSelection();
+      if (sel === null || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      if (node === null) return;
+      const block = topBlock(node, el);
+      if (block === null || !/(?:^|\s)dshui-md-h[1-6](?:\s|$)/.test(block.className)) return;
+      const range = sel.getRangeAt(0);
+      const atEnd =
+        node.nodeType === Node.TEXT_NODE
+          ? range.endOffset >= (node.nodeValue ?? "").length
+          : node === block
+            ? range.endOffset >= block.childNodes.length
+            : false;
+      if (!atEnd) return;
+      ev.preventDefault();
+      const p = document.createElement("p");
+      p.appendChild(document.createElement("br"));
+      block.after(p);
+      const next = document.createRange();
+      next.selectNodeContents(p);
+      next.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(next);
+      emit();
+    }
+  };
+
+
   const onClick = (ev: React.MouseEvent<HTMLDivElement>) => {
     const target = ev.target as HTMLElement;
     const back = target.closest<HTMLButtonElement>(".dshui-link-back");
@@ -95,6 +260,7 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       onInput={onInput}
       onClick={onClick}
       onMouseDown={onMouseDown}
+      onKeyDown={onKeyDown}
       onKeyUp={onKeyUp}
       onFocus={() => {
         focusedRef.current = true;

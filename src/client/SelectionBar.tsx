@@ -154,7 +154,7 @@ export function SelectionBar({
 
   const onPickNote = async (noteId: string) => {
     setClipping(true);
-    const ok = await saveClip(noteId, snap.text);
+    const ok = await saveClip(noteId, snap.markdown || snap.text);
     setClipping(false);
     if (ok) close(true);
     else setError(t("error.clip"));
@@ -168,7 +168,7 @@ export function SelectionBar({
       setError(t("error.clip"));
       return;
     }
-    const ok = await saveClip(note.id, snap.text);
+    const ok = await saveClip(note.id, snap.markdown || snap.text);
     setClipping(false);
     if (ok) close(true);
     else setError(t("error.clip"));

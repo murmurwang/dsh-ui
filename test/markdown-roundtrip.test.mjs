@@ -66,7 +66,7 @@ test("markdownToHtml：块级结构（标题/列表/引用/代码/表格）", ()
     "",
   ].join("\n");
   const html = markdownToHtml(src);
-  assert.ok(html.includes("<h1>标题</h1>"));
+  assert.ok(html.includes('<p class="dshui-md-h1">标题</p>'));
   assert.ok(html.includes("<strong>加粗</strong>"));
   assert.ok(html.includes("<em>斜体</em>"));
   assert.ok(html.includes("<code>code</code>"));

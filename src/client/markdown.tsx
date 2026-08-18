@@ -158,7 +158,9 @@ export function markdownToHtml(source: string, options: MarkdownHtmlOptions = {}
     }
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (heading !== null) {
-      blocks.push(`<h${heading[1].length}>${renderInline(heading[2], backLabel)}</h${heading[1].length}>`);
+      // 标题用带类的段落渲染（结构仍是 P，浏览器块操作稳定），
+      // 序列化时按类还原为 "# " 前缀。
+      blocks.push(`<p class="dshui-md-h${heading[1].length}">${renderInline(heading[2], backLabel)}</p>`);
       i += 1;
       continue;
     }
@@ -218,6 +220,8 @@ export function markdownToHtml(source: string, options: MarkdownHtmlOptions = {}
     }
     blocks.push(`<p>${renderInline(buf.join("\n").replace(/\n/g, " "), backLabel)}</p>`);
   }
+  // 空笔记给一个起始段落：保证输入始终落在真实块里（快捷输入依赖块结构）。
+  if (blocks.length === 0) return "<p><br/></p>";
   return blocks.join("");
 }
 
@@ -271,8 +275,15 @@ function inlineToMd(node: Node): string {
 function blockToMd(el: Element): string {
   const tag = el.tagName;
   switch (tag) {
-    case "P":
+    case "P": {
+      const cls = el.getAttribute("class") ?? "";
+      const h = /(?:^|\s)dshui-md-h([1-6])(?:\s|$)/.exec(cls);
+      if (h !== null) return `${"#".repeat(Number(h[1]))} ${inlineToMd(el).trim()}`;
+      if (/(?:^|\s)dshui-md-ul(?:\s|$)/.test(cls)) return `- ${inlineToMd(el).trim()}`;
+      if (/(?:^|\s)dshui-md-ol(?:\s|$)/.test(cls)) return `1. ${inlineToMd(el).trim()}`;
+      if (/(?:^|\s)dshui-md-quote(?:\s|$)/.test(cls)) return `> ${inlineToMd(el).trim()}`;
       return inlineToMd(el).trim();
+    }
     case "H1":
     case "H2":
     case "H3":

@@ -2,6 +2,8 @@
 export interface SelectionSnapshot {
     /** 选中的纯文本（trim 后）。 */
     text: string;
+    /** 选区 DOM 序列化成的 Markdown（保留标题/加粗/列表等格式，用于存笔记）。 */
+    markdown: string;
     /** 选区包围盒（视口坐标），用于浮窗定位。 */
     rect: DOMRect;
     /** 选区起止节点，用于排除判断。 */

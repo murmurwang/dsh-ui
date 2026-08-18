@@ -115,9 +115,20 @@ function persistLastOpenId(id: string): void {
   }
 }
 
-/** 剪藏 → 正文内的一条回链超链接行。 */
-function clipLinkLine(clip: { text: string; sessionId: string }): string {
-  const text = clip.text.replace(/\s+/g, " ").trim();
+const CLIP_BACK_LINK = "↩ 原对话";
+
+/**
+ * 剪藏 → 正文追加内容：
+ * - 单行文本：整段作为回链超链接文字（[原文](dshui://session/<id>)）；
+ * - 多行/含块级结构：保留 Markdown 结构原样追加，尾部附一条回链行。
+ */
+function clipToBody(clip: { text: string; sessionId: string }): string {
+  const link = `[${CLIP_BACK_LINK}](dshui://session/${clip.sessionId})`;
+  const text = clip.text.trim();
+  if (text === "") return link;
+  if (text.includes("\n")) {
+    return `${text}\n\n${link}`;
+  }
   return `[${text}](dshui://session/${clip.sessionId})`;
 }
 
@@ -239,7 +250,7 @@ export class NotesController {
     if (!result.ok) return;
     const note = result.value.note;
     if (note.clips.length === 0) return;
-    const lines = note.clips.map(clipLinkLine).join("\n\n");
+    const lines = note.clips.map((clip) => clipToBody({ text: clip.text.replace(/\s+/g, " "), sessionId: clip.sessionId })).join("\n\n");
     const body =
       note.body.trim() === ""
         ? `${lines}\n`
@@ -334,7 +345,7 @@ export class NotesController {
         return false;
       }
       const note = target.value.note;
-      const line = clipLinkLine(clip);
+      const line = clipToBody(clip);
       const body =
         note.body.trim() === ""
           ? `${line}\n`
