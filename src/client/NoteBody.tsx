@@ -248,17 +248,36 @@ export function NoteBody({ source, placeholder, backLabel, onSourceChange, onSes
       if (sessionId !== null && sessionId !== "") onSessionLink(sessionId);
       return;
     }
-    // 链接文字本体点击 = 就地编辑（默认跳转被拦截）。
-    const anchor = target.closest<HTMLAnchorElement>("a.dshui-link");
-    if (anchor !== null) {
-      ev.preventDefault();
-    }
   };
 
   const onMouseDown = (ev: React.MouseEvent<HTMLDivElement>) => {
-    // 返回按钮按下不移动光标（按钮 contenteditable=false 但仍会夺焦）。
     const target = ev.target as HTMLElement;
-    if (target.closest(".dshui-link-back") !== null) ev.preventDefault();
+    // 返回按钮按下不移动光标（按钮 contenteditable=false 但仍会夺焦）。
+    if (target.closest(".dshui-link-back") !== null) {
+      ev.preventDefault();
+      return;
+    }
+    // WebKit 对 contentEditable 内无 href 的 <a> 放置光标不可靠：
+    // 手动把光标放到点击位置（保证链接中间可输入）。
+    const anchor = target.closest<HTMLAnchorElement>("a.dshui-link");
+    if (anchor === null) return;
+    ev.preventDefault();
+    const sel = window.getSelection();
+    const el = ref.current;
+    if (sel === null || el === null) return;
+    el.focus();
+    const pointCaret = document.caretRangeFromPoint?.(ev.clientX, ev.clientY) ?? null;
+    if (pointCaret !== null && anchor.contains(pointCaret.startContainer)) {
+      sel.removeAllRanges();
+      sel.addRange(pointCaret);
+      return;
+    }
+    // 回退：光标放到链接末尾。
+    const range = document.createRange();
+    range.selectNodeContents(anchor);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
   };
 
   const onKeyUp = () => {
