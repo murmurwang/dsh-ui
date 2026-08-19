@@ -1,5 +1,6 @@
 import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type { Note, NoteClip, NoteListItem, NotesError, RpcResult } from "../notes/contract";
+import type { T } from "./locales";
 /**
  * 客户端笔记面：把 host 的 `notes` Typert 远程挂进 `ctx.remote`，
  * 并用一个 React-free 的 NotesController 管理列表 / 打开笔记 / 保存 /
@@ -91,6 +92,8 @@ export interface NotesSnapshot {
     } | null;
 }
 export declare class NotesController {
+    private readonly t;
+    constructor(t: T);
     private remote;
     private state;
     private listeners;
@@ -131,8 +134,9 @@ export declare class NotesController {
     /**
      * 把剪藏存进指定笔记：正文末尾追加一段“回链超链接文字”
      * （链接文字 = 引用原文，目标 = 原会话）。若该笔记正打开，直接更新视图。
+     * @param backLabel - 回链文字（本地化文案）。
      */
-    addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean>;
+    addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">, backLabel: string): Promise<boolean>;
     removeNote(id: string): Promise<void>;
     /**
      * 以指定版本快照保存（切换笔记时兜底保存上一篇的草稿）：

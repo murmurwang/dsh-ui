@@ -36,7 +36,7 @@ DSH（DeepSeek Harness）的浏览器 UI 插件，三个功能：
 
 - 无预览/编辑之分、无 Markdown 源码；标题/列表/表格/引用/代码块直接呈现；
 - **块级快捷输入**：`# ` 标题、`- ` 列表（回车续行）、`1. ` 有序、`> ` 引用；
-- **剪藏保留格式**（标题/加粗/列表等结构随选区序列化）：单行 = 整段**灰色回链文字**；多块 = 原格式追加 + 尾部「↩ 原对话」回链；
+- **剪藏保留格式**（标题/加粗/列表等结构随选区序列化）：单行 = 整段**灰色回链文字**；多块 = 原格式追加 + 尾部「查看原对话」回链（回链文字随界面语言）；
 - 回链 hover 弹出「**查看原对话**」按钮（划选浮窗同款样式）；链接文字**可点入编辑、可划选、中间可换行**（换行分裂为两行完整回链）；
 - **自动保存**：输入停顿 1.5s 落盘；离开/切 tab/关闭/页面隐藏全部兜底保存；乐观并发（版本号），dsh 写回时 3 秒轮询自动刷新界面（不打断你输入）。
 - **@小鲸鱼**：正文输入 `@` 或点底部 🐋 按钮 —— ① 新建会话提问（笔记为上下文）② 在当前会话追问 ③ 让 dsh 在本笔记中工作（任务模板 + `notes` 工具读写写回）。
@@ -53,15 +53,27 @@ DSH（DeepSeek Harness）的浏览器 UI 插件，三个功能：
 - 文字划选浮窗：追问所选部分 / 新分支追问 / 存为笔记——存笔记的回链为 `dshui://file/<id>`，在笔记里点击打开对应文件页。
 - 存储：`$DSH_HOME/notes/files/<id>/`（blob + meta.json + text.txt）。
 
+## 语言 / Language
+
+插件**完整双语**（中文 / English），跟随 DSH 当前语言自动切换：划选浮窗、三分栏、笔记编辑器、文件页、弹窗、toast、错误提示、剪藏回链文字、@小鲸鱼上下文模板（`ctx.clipTitle` / `ctx.work`）全部有 zh/en 两套词典；工作区 tab 沿用官方 ui-workspace 的官方词典。DSH 用英文界面时插件即英文界面（默认笔记标题「Untitled note」、剪藏 toast「Saved to …」等均随语言）。
+
 ## 安装
 
-要求 DSH ≥ `0.1.0-rc.6`（web profile）。
+要求 DSH ≥ `0.1.0-rc.6`（web profile）。**不需要注册 npm**——本插件未发布到 npm registry，以下三种方式任选其一：
 
 ```sh
-# 方式一：从 GitHub 安装（需要 pnpm，dsh plugin 会转发给 pnpm）
+# 方式一：从 GitHub 仓库安装（推荐；需要 pnpm，dsh plugin 会转发给 pnpm）
 dsh plugin --profile web add github:murmurwang/dsh-ui
 
-# 方式二：本地开发/试用 —— 直接安装到 profile 目录
+# 方式二：从 GitHub Release 的 tarball 安装（无 pnpm 也能用）
+# 下载 https://github.com/murmurwang/dsh-ui/releases/download/v0.3.1/dsh-ui-0.3.1.tgz
+dsh plugin --profile web add /path/to/dsh-ui-0.3.1.tgz
+# 或直接给 pnpm/npm 远程 tarball 链接：
+cd "$DSH_HOME/profiles/web"
+npm install https://github.com/murmurwang/dsh-ui/releases/download/v0.3.1/dsh-ui-0.3.1.tgz
+
+# 方式三：clone 源码本地安装 / 开发试用
+git clone https://github.com/murmurwang/dsh-ui
 cd "$DSH_HOME/profiles/web"
 npm install /path/to/dsh-ui
 ```
@@ -75,6 +87,8 @@ npm install /path/to/dsh-ui
 ```
 
 重启 `dsh web` 后生效（插件配置在启动时解析；新增 typert 导出同样需要重启）。可以先 `dsh --profile web --dump-config` 确认配置树里出现 `ui-selection-ask → dsh-ui`。
+
+> 也支持固定版本：`dsh plugin --profile web add github:murmurwang/dsh-ui#v0.3.1`。若需要从 npm registry 安装（`npm install dsh-ui`），可以联系作者发布（`npm publish`），或自行 fork 后发布到自己的 scope。
 
 ## 开发
 

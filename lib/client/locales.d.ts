@@ -1,5 +1,8 @@
+import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
 /** locale 字典命名空间。 */
 export declare const NS = "dsh-ui.selection";
+/** 绑定到本命名空间的翻译函数（slot locale 座 / ctx.locale.bind 都是它）。 */
+export type T = TranslateNS<typeof NS>;
 export declare const zh: {
     readonly "action.here": "追问所选部分";
     readonly "action.here.title": "把所选内容作为引用，预填到当前对话的输入框";
@@ -66,6 +69,29 @@ export declare const zh: {
     readonly "error.fork": "创建分支对话失败";
     readonly "error.input": "找不到该会话的输入框";
     readonly "error.clip": "保存剪藏失败";
+    readonly "service.unavailable": "笔记服务不可用：{detail}";
+    readonly "create.failed": "新建笔记失败";
+    readonly "note.notFound": "笔记不存在";
+    readonly "note.loadFailed": "读取笔记失败";
+    readonly "note.defaultTitle": "未命名笔记";
+    readonly "save.conflict": "笔记已被其他来源修改，已载入最新内容";
+    readonly "save.failed": "保存失败";
+    readonly "save.network": "保存失败（网络）";
+    readonly "clip.targetMissing": "目标笔记不存在";
+    readonly "clip.conflict": "剪藏失败（笔记可能已被修改，请重试）";
+    readonly "clip.saved": "已保存到《{name}》";
+    readonly "clip.network": "剪藏失败（网络）";
+    readonly "rename.conflict": "重命名失败（笔记可能已被修改）";
+    readonly "rename.network": "重命名失败（网络）";
+    readonly "session.gone": "原会话已不存在";
+    readonly "files.upload.failed": "上传失败：{detail}";
+    readonly "files.upload.unknown": "未知错误";
+    readonly "files.upload.saved": "已上传《{name}》";
+    readonly "files.upload.network": "上传失败（网络）";
+    readonly "files.notFound": "文件不存在";
+    readonly "ctx.clipTitle": "📓 笔记《{title}》（noteId: {id}）";
+    readonly "ctx.bodyPrefix": "正文：";
+    readonly "ctx.work": "请在笔记《{title}》（noteId: {id}）中完成下面的任务：\n- 先用 notes 工具 read 读取本笔记；\n- 完成任务后，用 notes 工具 write 把完整结果写回同一笔记（带上 read 得到的 ifVersion）；\n\n任务：";
 };
 export declare const en: {
     readonly "action.here": "Ask about this here";
@@ -133,6 +159,29 @@ export declare const en: {
     readonly "error.fork": "Failed to create branch";
     readonly "error.input": "Composer unavailable for this session";
     readonly "error.clip": "Failed to save clip";
+    readonly "service.unavailable": "Notes service unavailable: {detail}";
+    readonly "create.failed": "Failed to create note";
+    readonly "note.notFound": "Note not found";
+    readonly "note.loadFailed": "Failed to load note";
+    readonly "note.defaultTitle": "Untitled note";
+    readonly "save.conflict": "The note was changed elsewhere — the latest content has been loaded";
+    readonly "save.failed": "Failed to save";
+    readonly "save.network": "Failed to save (network)";
+    readonly "clip.targetMissing": "Target note no longer exists";
+    readonly "clip.conflict": "Clip failed — the note may have changed, please retry";
+    readonly "clip.saved": "Saved to “{name}”";
+    readonly "clip.network": "Clip failed (network)";
+    readonly "rename.conflict": "Rename failed — the note may have changed";
+    readonly "rename.network": "Rename failed (network)";
+    readonly "session.gone": "The original conversation no longer exists";
+    readonly "files.upload.failed": "Upload failed: {detail}";
+    readonly "files.upload.unknown": "unknown error";
+    readonly "files.upload.saved": "Uploaded “{name}”";
+    readonly "files.upload.network": "Upload failed (network)";
+    readonly "files.notFound": "File not found";
+    readonly "ctx.clipTitle": "📓 Note “{title}” (noteId: {id})";
+    readonly "ctx.bodyPrefix": "Content:";
+    readonly "ctx.work": "Complete the following task in the note “{title}” (noteId: {id}):\n- First read this note with the notes tool read;\n- After finishing, write the complete result back to the same note with the notes tool write (pass the ifVersion you got from read);\n\nTask:";
 };
 /** 词典键集合（以 zh 为准），en 与之对齐。 */
 export type SelectionKey = keyof typeof zh | keyof typeof en;

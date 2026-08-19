@@ -2,6 +2,7 @@ import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type {} from "@deepseek-ai/dsh-api-gateway/client";
 import type { NotesError, RpcResult } from "../notes/contract";
 import { FILES_DESCRIPTORS, NOTES_DESCRIPTORS } from "../notes/wire";
+import type { T } from "./locales";
 
 /** 文件元数据（wire 形状）。 */
 export interface FileMeta {
@@ -74,6 +75,8 @@ export interface FilesSnapshot {
 }
 
 export class FilesController {
+  constructor(private readonly t: T) {}
+
   private remote: FilesRemoteFace | null = null;
   private state: FilesSnapshot = {
     phase: "boot",
@@ -170,14 +173,16 @@ export class FilesController {
         bytesBase64,
       });
       if (!result.ok) {
-        this.notifyToast(`上传失败：${result.error.code === "invalid-argument" ? result.error.message : "未知错误"}`);
+        this.notifyToast(this.t("files.upload.failed", {
+          detail: result.error.code === "invalid-argument" ? result.error.message : this.t("files.upload.unknown"),
+        }));
         return false;
       }
       await this.refresh();
-      this.notifyToast(`已上传《${result.value.file.name}》`);
+      this.notifyToast(this.t("files.upload.saved", { name: result.value.file.name }));
       return true;
     } catch {
-      this.notifyToast("上传失败（网络）");
+      this.notifyToast(this.t("files.upload.network"));
       return false;
     }
   }
@@ -185,7 +190,7 @@ export class FilesController {
   async open(id: string): Promise<void> {
     const result = await this.face().get({ id });
     if (!result.ok) {
-      this.publish({ openId: id, openFile: null, openError: "文件不存在" });
+      this.publish({ openId: id, openFile: null, openError: this.t("files.notFound") });
       return;
     }
     this.revokePreview();

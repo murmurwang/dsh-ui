@@ -1,6 +1,6 @@
 {
   "name": "dsh-ui",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH 浏览器 UI 插件：划选文字就地追问 / 新分支追问；笔记（划线剪藏、Markdown 编辑、@小鲸鱼 在笔记中工作）。",
   "type": "module",
   "main": "lib/index.js",

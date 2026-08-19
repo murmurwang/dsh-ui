@@ -1,5 +1,10 @@
+import type { TranslateNS } from "@deepseek-ai/dsh-client-ui-slots";
+
 /** locale 字典命名空间。 */
 export const NS = "dsh-ui.selection";
+
+/** 绑定到本命名空间的翻译函数（slot locale 座 / ctx.locale.bind 都是它）。 */
+export type T = TranslateNS<typeof NS>;
 
 export const zh = {
   // 划选浮窗
@@ -73,6 +78,31 @@ export const zh = {
   "error.fork": "创建分支对话失败",
   "error.input": "找不到该会话的输入框",
   "error.clip": "保存剪藏失败",
+  // 服务 / 控制器提示（toast 与状态条）
+  "service.unavailable": "笔记服务不可用：{detail}",
+  "create.failed": "新建笔记失败",
+  "note.notFound": "笔记不存在",
+  "note.loadFailed": "读取笔记失败",
+  "note.defaultTitle": "未命名笔记",
+  "save.conflict": "笔记已被其他来源修改，已载入最新内容",
+  "save.failed": "保存失败",
+  "save.network": "保存失败（网络）",
+  "clip.targetMissing": "目标笔记不存在",
+  "clip.conflict": "剪藏失败（笔记可能已被修改，请重试）",
+  "clip.saved": "已保存到《{name}》",
+  "clip.network": "剪藏失败（网络）",
+  "rename.conflict": "重命名失败（笔记可能已被修改）",
+  "rename.network": "重命名失败（网络）",
+  "session.gone": "原会话已不存在",
+  "files.upload.failed": "上传失败：{detail}",
+  "files.upload.unknown": "未知错误",
+  "files.upload.saved": "已上传《{name}》",
+  "files.upload.network": "上传失败（网络）",
+  "files.notFound": "文件不存在",
+  // 笔记上下文模板（新建会话预填内容）
+  "ctx.clipTitle": "📓 笔记《{title}》（noteId: {id}）",
+  "ctx.bodyPrefix": "正文：",
+  "ctx.work": "请在笔记《{title}》（noteId: {id}）中完成下面的任务：\n- 先用 notes 工具 read 读取本笔记；\n- 完成任务后，用 notes 工具 write 把完整结果写回同一笔记（带上 read 得到的 ifVersion）；\n\n任务：",
 } as const;
 
 export const en = {
@@ -141,6 +171,29 @@ export const en = {
   "error.fork": "Failed to create branch",
   "error.input": "Composer unavailable for this session",
   "error.clip": "Failed to save clip",
+  "service.unavailable": "Notes service unavailable: {detail}",
+  "create.failed": "Failed to create note",
+  "note.notFound": "Note not found",
+  "note.loadFailed": "Failed to load note",
+  "note.defaultTitle": "Untitled note",
+  "save.conflict": "The note was changed elsewhere — the latest content has been loaded",
+  "save.failed": "Failed to save",
+  "save.network": "Failed to save (network)",
+  "clip.targetMissing": "Target note no longer exists",
+  "clip.conflict": "Clip failed — the note may have changed, please retry",
+  "clip.saved": "Saved to “{name}”",
+  "clip.network": "Clip failed (network)",
+  "rename.conflict": "Rename failed — the note may have changed",
+  "rename.network": "Rename failed (network)",
+  "session.gone": "The original conversation no longer exists",
+  "files.upload.failed": "Upload failed: {detail}",
+  "files.upload.unknown": "unknown error",
+  "files.upload.saved": "Uploaded “{name}”",
+  "files.upload.network": "Upload failed (network)",
+  "files.notFound": "File not found",
+  "ctx.clipTitle": "📓 Note “{title}” (noteId: {id})",
+  "ctx.bodyPrefix": "Content:",
+  "ctx.work": "Complete the following task in the note “{title}” (noteId: {id}):\n- First read this note with the notes tool read;\n- After finishing, write the complete result back to the same note with the notes tool write (pass the ifVersion you got from read);\n\nTask:",
 } as const;
 
 /** 词典键集合（以 zh 为准），en 与之对齐。 */

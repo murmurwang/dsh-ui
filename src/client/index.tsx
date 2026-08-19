@@ -181,6 +181,8 @@ export function apply(ctx: ClientContext): void {
   const sessions = ctx.sessions;
   const workspaces = ctx.workspaces;
   const conversation = ctx.conversation;
+  /** 命名空间翻译函数（与 slot locale 座同源；控制器 toast/错误也用它）。 */
+  const t = ctx.locale.bind(NS);
 
   /** 解析某会话的输入面（SessionInputResolver.for 需要一个带 scope 的 ctx）。 */
   const inputFor = (sessionId: SessionId) => {
@@ -256,8 +258,8 @@ export function apply(ctx: ClientContext): void {
 
   // —— 功能二：笔记 ——
 
-  const notes = new NotesController();
-  const files = new FilesController();
+  const notes = new NotesController(t);
+  const files = new FilesController(t);
 
   // 挂载远程贡献（notes + files，Typert gateway → host Services）。
   // 命名空间服务由 gateway 以动态 fiber 提供为 "remote.notes"/"remote.files"；
@@ -283,7 +285,7 @@ export function apply(ctx: ClientContext): void {
       .catch((err: unknown) => {
         console.error("[dsh-ui] remote mount failed:", err);
         const detail = err instanceof Error ? err.message : String(err);
-        notes.notifyToast(`笔记服务不可用：${detail}`);
+        notes.notifyToast(t("service.unavailable", { detail }));
       });
     return () => {
       disposed = true;
@@ -293,24 +295,28 @@ export function apply(ctx: ClientContext): void {
     };
   }, "dsh-ui: remotes");
 
-  /** 剪藏落点：当前会话 id + 标题。 */
+  /** 剪藏落点：当前会话 id + 标题（回链文字按当前语言）。 */
   const saveClip = (noteId: string, text: string): Promise<boolean> => {
     const id = currentSessionId();
     if (id === undefined) {
-      notes.notifyToast("当前没有可用的对话");
+      notes.notifyToast(t("error.noSession"));
       return Promise.resolve(false);
     }
     const summary = sessions.list.getSnapshot().byId[id];
-    return notes.addClipTo(noteId, {
-      text,
-      sessionId: id,
-      ...(summary !== undefined ? { sessionTitle: summary.displayTitle } : {}),
-    });
+    return notes.addClipTo(
+      noteId,
+      {
+        text,
+        sessionId: id,
+        ...(summary !== undefined ? { sessionTitle: summary.displayTitle } : {}),
+      },
+      t("clip.back"),
+    );
   };
 
   const openSession = (sessionId: string): void => {
     if (sessions.list.getSnapshot().byId[sessionId as SessionId] === undefined) {
-      notes.notifyToast("原会话已不存在");
+      notes.notifyToast(t("session.gone"));
       return;
     }
     sessions.open(sessionId as SessionId);
@@ -469,7 +475,7 @@ export function apply(ctx: ClientContext): void {
           files,
           notes,
           saveClip: (noteId: string, text: string, fileLink: string) =>
-            notes.addClipTo(noteId, { text, sessionId: fileLink }),
+            notes.addClipTo(noteId, { text, sessionId: fileLink }, t("clip.back")),
           askHere,
           askInBranch,
         }),

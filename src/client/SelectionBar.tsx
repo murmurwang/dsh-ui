@@ -162,7 +162,7 @@ export function SelectionBar({
 
   const onCreateAndPick = async () => {
     setClipping(true);
-    const note = await notes.create("");
+    const note = await notes.create(t("note.defaultTitle"));
     if (note === null) {
       setClipping(false);
       setError(t("error.clip"));

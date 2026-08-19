@@ -53,7 +53,7 @@ function NotesTab({ t, notes, menuId, setMenuId }: Pick<SidebarRegionProps, "t" 
   const composingRef = React.useRef(false);
 
   const onCreate = () => {
-    void notes.create("").then((note) => {
+    void notes.create(t("note.defaultTitle")).then((note) => {
       if (note !== null) void notes.open(note.id);
     });
   };
@@ -90,11 +90,11 @@ function NotesTab({ t, notes, menuId, setMenuId }: Pick<SidebarRegionProps, "t" 
       (ok) => {
         setRenaming(false);
         setRenameTarget(null);
-        if (!ok) setRenameError("重命名失败（笔记可能已被修改）");
+        if (!ok) setRenameError(t("rename.conflict"));
       },
       () => {
         setRenaming(false);
-        setRenameError("重命名失败（网络）");
+        setRenameError(t("rename.network"));
       },
     );
   };

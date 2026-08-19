@@ -17,22 +17,16 @@ export interface NoteEditorProps {
   workInNote: (template: string) => void;
 }
 
-function clipContext(open: { title: string; id: string; body: string }): string {
-  const parts: string[] = [`📓 笔记《${open.title}》（noteId: ${open.id}）`];
+function clipContext(open: { title: string; id: string; body: string }, t: NoteEditorProps["t"]): string {
+  const parts: string[] = [t("ctx.clipTitle", { title: open.title, id: open.id })];
   if (open.body.trim() !== "") {
-    parts.push(`正文：\n${open.body.slice(0, 12000)}`);
+    parts.push(`${t("ctx.bodyPrefix")}\n${open.body.slice(0, 12000)}`);
   }
   return parts.join("\n\n");
 }
 
-function workTemplate(open: { title: string; id: string }): string {
-  return [
-    `请在笔记《${open.title}》（noteId: ${open.id}）中完成下面的任务：`,
-    `- 先用 notes 工具 read 读取本笔记；`,
-    `- 完成任务后，用 notes 工具 write 把完整结果写回同一笔记（带上 read 得到的 ifVersion）；`,
-    ``,
-    `任务：`,
-  ].join("\n");
+function workTemplate(open: { title: string; id: string }, t: NoteEditorProps["t"]): string {
+  return t("ctx.work", { title: open.title, id: open.id });
 }
 
 /** 笔记页：右侧主区、Notion 式所见即所得（无预览/编辑之分）。 */
@@ -182,9 +176,9 @@ export function NoteEditor(props: NoteEditorProps) {
   };
 
   const actions = [
-    { key: "newSession", label: t("note.ask.newSession"), run: () => runAction(() => props.askInNewSession(clipContext(open))) },
-    { key: "current", label: t("note.ask.current"), run: () => runAction(() => props.askInCurrent(clipContext(open))) },
-    { key: "work", label: t("note.ask.work"), run: () => runAction(() => props.workInNote(workTemplate(open))) },
+    { key: "newSession", label: t("note.ask.newSession"), run: () => runAction(() => props.askInNewSession(clipContext(open, t))) },
+    { key: "current", label: t("note.ask.current"), run: () => runAction(() => props.askInCurrent(clipContext(open, t))) },
+    { key: "work", label: t("note.ask.work"), run: () => runAction(() => props.workInNote(workTemplate(open, t))) },
   ];
 
   return (

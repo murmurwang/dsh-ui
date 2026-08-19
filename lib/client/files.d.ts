@@ -1,5 +1,6 @@
 import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type { NotesError, RpcResult } from "../notes/contract";
+import type { T } from "./locales";
 /** 文件元数据（wire 形状）。 */
 export interface FileMeta {
     id: string;
@@ -81,6 +82,8 @@ export interface FilesSnapshot {
     } | null;
 }
 export declare class FilesController {
+    private readonly t;
+    constructor(t: T);
     private remote;
     private state;
     private listeners;

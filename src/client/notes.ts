@@ -2,6 +2,7 @@ import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type {} from "@deepseek-ai/dsh-api-gateway/client";
 import type { Note, NoteClip, NoteListItem, NotesError, RpcResult } from "../notes/contract";
 import { NOTES_DESCRIPTORS } from "../notes/wire";
+import type { T } from "./locales";
 
 /**
  * 客户端笔记面：把 host 的 `notes` Typert 远程挂进 `ctx.remote`，
@@ -115,8 +116,6 @@ function persistLastOpenId(id: string): void {
   }
 }
 
-const CLIP_BACK_LINK = "↩ 原对话";
-
 /** 回链 URL：会话（dshui://session/<id>）或文件（dshui://file/<id>）。 */
 function backLinkUrl(sessionId: string): string {
   return sessionId.startsWith("file/")
@@ -128,10 +127,11 @@ function backLinkUrl(sessionId: string): string {
  * 剪藏 → 正文追加内容：
  * - 单行文本：整段作为回链超链接文字（[原文](url)）；
  * - 多行/含块级结构：保留 Markdown 结构原样追加，尾部附一条回链行。
+ * @param backLabel - 回链文字（本地化，“查看原对话”/“View original chat”）。
  */
-function clipToBody(clip: { text: string; sessionId: string }): string {
+function clipToBody(clip: { text: string; sessionId: string }, backLabel: string): string {
   const url = backLinkUrl(clip.sessionId);
-  const link = `[${CLIP_BACK_LINK}](${url})`;
+  const link = `[${backLabel}](${url})`;
   const text = clip.text.trim();
   if (text === "") return link;
   if (text.includes("\n")) {
@@ -143,6 +143,8 @@ function clipToBody(clip: { text: string; sessionId: string }): string {
 const POLL_MS = 3000;
 
 export class NotesController {
+  constructor(private readonly t: T) {}
+
   private remote: NotesRemoteFace | null = null;
   private state: NotesSnapshot = {
     phase: "boot",
@@ -230,7 +232,7 @@ export class NotesController {
   async create(title: string): Promise<Note | null> {
     const result = await this.face().create({ title });
     if (!result.ok) {
-      this.notifyToast("新建笔记失败");
+      this.notifyToast(this.t("create.failed"));
       return null;
     }
     await this.refresh();
@@ -258,7 +260,8 @@ export class NotesController {
     if (!result.ok) return;
     const note = result.value.note;
     if (note.clips.length === 0) return;
-    const lines = note.clips.map((clip) => clipToBody({ text: clip.text.replace(/\s+/g, " "), sessionId: clip.sessionId })).join("\n\n");
+    const backLabel = this.t("clip.back");
+    const lines = note.clips.map((clip) => clipToBody({ text: clip.text.replace(/\s+/g, " "), sessionId: clip.sessionId }, backLabel)).join("\n\n");
     const body =
       note.body.trim() === ""
         ? `${lines}\n`
@@ -279,7 +282,7 @@ export class NotesController {
   private async loadOpen(id: string, force = false): Promise<void> {
     const result = await this.face().get({ id });
     if (!result.ok) {
-      this.publish({ openId: id, openNote: null, openError: result.error.code === "not-found" ? "笔记不存在" : "读取笔记失败" });
+      this.publish({ openId: id, openNote: null, openError: result.error.code === "not-found" ? this.t("note.notFound") : this.t("note.loadFailed") });
       return;
     }
     if (this.dirty && !force) return; // 轮询时本地草稿优先，等保存后再同步。
@@ -320,10 +323,10 @@ export class NotesController {
       });
       if (!result.ok) {
         if (result.error.code === "version-conflict") {
-          this.publish({ saving: false, saveError: "笔记已被其他来源修改，已载入最新内容" });
+          this.publish({ saving: false, saveError: this.t("save.conflict") });
           await this.loadOpen(open.id);
         } else {
-          this.publish({ saving: false, saveError: "保存失败" });
+          this.publish({ saving: false, saveError: this.t("save.failed") });
         }
         return false;
       }
@@ -336,7 +339,7 @@ export class NotesController {
       await this.refresh();
       return true;
     } catch {
-      this.publish({ saving: false, saveError: "保存失败（网络）" });
+      this.publish({ saving: false, saveError: this.t("save.network") });
       return false;
     }
   }
@@ -344,16 +347,17 @@ export class NotesController {
   /**
    * 把剪藏存进指定笔记：正文末尾追加一段“回链超链接文字”
    * （链接文字 = 引用原文，目标 = 原会话）。若该笔记正打开，直接更新视图。
+   * @param backLabel - 回链文字（本地化文案）。
    */
-  async addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">): Promise<boolean> {
+  async addClipTo(noteId: string, clip: Omit<NoteClip, "id" | "createdAt">, backLabel: string): Promise<boolean> {
     try {
       const target = await this.face().get({ id: noteId });
       if (!target.ok) {
-        this.notifyToast("目标笔记不存在");
+        this.notifyToast(this.t("clip.targetMissing"));
         return false;
       }
       const note = target.value.note;
-      const line = clipToBody(clip);
+      const line = clipToBody(clip, backLabel);
       const body =
         note.body.trim() === ""
           ? `${line}\n`
@@ -364,7 +368,7 @@ export class NotesController {
         body,
       });
       if (!result.ok) {
-        this.notifyToast("剪藏失败（笔记可能已被修改，请重试）");
+        this.notifyToast(this.t("clip.conflict"));
         return false;
       }
       this.publish({ lastClipNoteId: noteId });
@@ -377,10 +381,10 @@ export class NotesController {
         this.publish({ openNote: result.value.note });
       }
       await this.refresh();
-      this.notifyToast(`已保存到《${result.value.note.title}》`);
+      this.notifyToast(this.t("clip.saved", { name: result.value.note.title }));
       return true;
     } catch {
-      this.notifyToast("剪藏失败（网络）");
+      this.notifyToast(this.t("clip.network"));
       return false;
     }
   }
@@ -430,7 +434,7 @@ export class NotesController {
     try {
       const target = await this.face().get({ id });
       if (!target.ok) {
-        this.notifyToast("笔记不存在");
+        this.notifyToast(this.t("note.notFound"));
         return false;
       }
       const result = await this.face().update({
@@ -439,7 +443,7 @@ export class NotesController {
         title,
       });
       if (!result.ok) {
-        this.notifyToast("重命名失败（笔记可能已被修改）");
+        this.notifyToast(this.t("rename.conflict"));
         return false;
       }
       if (this.state.openId === id) {
@@ -448,7 +452,7 @@ export class NotesController {
       await this.refresh();
       return true;
     } catch {
-      this.notifyToast("重命名失败（网络）");
+      this.notifyToast(this.t("rename.network"));
       return false;
     }
   }
